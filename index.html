@@ -14,9 +14,11 @@ body{
     overflow:hidden;
     width:100vw;
     height:100vh;
+    /* 强制横屏，竖屏自动旋转 */
+    transform: rotate(0deg);
 }
 
-/* 强制横屏 */
+/* 竖屏强制旋转为横屏 */
 @media screen and (orientation:portrait){
     body{
         transform:rotate(90deg);
@@ -61,6 +63,7 @@ button{
 .hard{background:#ff9800;color:white}
 .hell{background:#f44336;color:white}
 .challenge{background:#00bcd4;color:white}
+.peace{background:#8bc34a;color:white}
 .restart{background:#2196F3}
 .back{background:#9e9e9e}
 .shop{background:#9c27b0;color:white;margin-top:8px}
@@ -227,6 +230,7 @@ button{
     <button class="normal" onclick="startGame('normal')">普通</button>
     <button class="hard" onclick="startGame('hard')">困难</button>
     <button class="hell" onclick="startGame('hell')">炼狱</button>
+    <button class="peace" onclick="startGame('peace')">和平模式</button>
     <button class="challenge" onclick="startChallenge()">一分钟挑战模式</button>
 
     <div style="margin-top:15px">
@@ -377,13 +381,15 @@ function getDifficultyConfig(){
             return {speed: baseSpeed * 1.25, aiAttack: false};
         case 'hell':
             return {speed: baseSpeed * 0.75, aiAttack: true};
+        case 'peace':
+            return {speed: baseSpeed * 1.5, aiAttack: false, noDeath: true, noWallPass: true};
     }
 }
 
 function startSpeedTimer(){
     speedTimer = setInterval(()=>{
         gameRunTime++;
-        if(difficulty === 'normal'){
+        if(difficulty === 'normal' || difficulty === 'peace'){
             if(gameRunTime % 60 === 0){
                 speedFactor += 0.001;
             }
@@ -441,8 +447,10 @@ function aiHitPlayerBody(){
     pointDom.innerText=gamePoint;
 }
 
-// 蛇头相撞50%概率判定
+// 蛇头相撞和平模式不死亡，普通模式50%概率判定
 function headCollision(){
+    const cfg = getDifficultyConfig();
+    if(cfg.noDeath) return;
     let r = Math.random();
     if(r < 0.5){
         clearInterval(timer);clearInterval(challengeTimer);clearInterval(speedTimer);
@@ -456,6 +464,8 @@ function headCollision(){
 }
 
 function collisionRandomEvent(){
+    const cfg = getDifficultyConfig();
+    if(cfg.noDeath) return;
     if(shieldTime > 0){
         shieldTime--;
         updatePropUI();
@@ -541,8 +551,15 @@ function playerMove(){
         case 'up':head.y--;break;case 'down':head.y++;break;
         case 'left':head.x--;break;case 'right':head.x++;break;
     }
+    const cfg = getDifficultyConfig();
+    // 和平模式取消穿墙，所有模式撞墙都判定死亡
     if(head.x<0||head.x>=maxGrid||head.y<0||head.y>=maxGrid){
-        clearInterval(timer);clearInterval(challengeTimer);clearInterval(speedTimer);gameOver();return;
+        clearInterval(timer);clearInterval(challengeTimer);clearInterval(speedTimer);
+        gameCanvas.style.display='none';
+        joystick.style.display='none';
+        speedBtn.style.display='none';
+        deathPanel.style.display='block';
+        return;
     }
     playerSnake.unshift(head);
     checkAiCollision();
