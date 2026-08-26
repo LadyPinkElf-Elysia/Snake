@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>人机对战贪吃蛇 手机版</title>
+<title>蔚蓝档案贪吃蛇 爱丽丝皮肤版</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;touch-action:manipulation}
 body{background:#222;color:#fff;text-align:center;padding-top:10px;font-family:微软雅黑;max-width:500px;margin:0 auto}
@@ -14,10 +14,12 @@ button{padding:8px 16px;margin:4px;font-size:16px;border:none;border-radius:8px;
 .normal{background:#4CAF50;color:white}
 .hard{background:#ff9800;color:white}
 .hell{background:#f44336;color:white}
+.challenge{background:#00bcd4;color:white}
 .restart{background:#2196F3}
 .back{background:#9e9e9e}
 .shop{background:#9c27b0;color:white;margin-top:8px}
-.prop{background:#00bcd4;margin:3px}
+.prop{background:#673ab7;margin:3px}
+.skin-btn{background:#e91e63;color:white;margin:5px}
 
 /* 移动端控制区 */
 .control-area{display:flex;justify-content:space-between;align-items:center;margin-top:15px;padding:0 10px}
@@ -27,6 +29,10 @@ button{padding:8px 16px;margin:4px;font-size:16px;border:none;border-radius:8px;
 .speed-btn{width:70px;height:70px;background:#ff5722;color:white;border-radius:10px;font-size:14px}
 .prop-bar{display:flex;gap:6px;margin-top:10px;justify-content:center}
 .prop-item{padding:6px 10px;background:#444;border-radius:6px;font-size:14px}
+
+/* 皮肤弹窗 */
+.skin-panel{display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#333;padding:20px;border-radius:12px;z-index:999}
+.countdown{font-size:22px;color:#ffeb3b;font-weight:bold;margin:10px 0}
 </style>
 </head>
 <body>
@@ -35,16 +41,20 @@ button{padding:8px 16px;margin:4px;font-size:16px;border:none;border-radius:8px;
     <button class="normal" onclick="startGame('normal')">普通</button>
     <button class="hard" onclick="startGame('hard')">困难</button>
     <button class="hell" onclick="startGame('hell')">炼狱</button>
+    <button class="challenge" onclick="startChallenge()">一分钟挑战模式</button>
     <div style="margin-top:15px">
-        <h3>道具商店</h3>
+        <h3>道具&皮肤商店</h3>
         <button class="prop" onclick="buyProp('shield')">护盾（10积分）：5秒免疫碰撞</button>
         <button class="prop" onclick="buyProp('lucky')">幸运药水（15积分）：提升幸运概率</button>
+        <button class="skin-btn" onclick="buySkin()">女仆爱丽丝皮肤（30积分）</button>
         <p>当前积分：<span id="point">0</span></p>
+        <p id="skinStatus">皮肤状态：未解锁</p>
     </div>
 </div>
 
 <div class="info" id="gameInfo" style="display:none">
     分数：<span id="score">0</span> | 积分：<span id="gamePoint">0</span>
+    <div class="countdown" id="countdown" style="display:none">剩余时间：<span id="timeLeft">60</span>秒</div>
 </div>
 <canvas id="game" width="400" height="400" style="display:none"></canvas>
 
@@ -71,6 +81,12 @@ button{padding:8px 16px;margin:4px;font-size:16px;border:none;border-radius:8px;
     <button class="back" onclick="backToMenu()">回到主界面</button>
 </div>
 
+<div class="skin-panel" id="skinUnlockPanel">
+    <h3>恭喜！挑战成功</h3>
+    <p>已解锁女仆爱丽丝皮肤</p>
+    <button onclick="closeSkinPanel()">确定</button>
+</div>
+
 <script>
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
@@ -84,6 +100,10 @@ const endMenu = document.getElementById('endMenu');
 const controlPanel = document.getElementById('controlPanel');
 const shieldPropDom = document.getElementById('shieldProp');
 const doublePropDom = document.getElementById('doubleProp');
+const countdownDom = document.getElementById('countdown');
+const timeLeftDom = document.getElementById('timeLeft');
+const skinStatusDom = document.getElementById('skinStatus');
+const skinUnlockPanel = document.getElementById('skinUnlockPanel');
 
 const size = 20;
 const maxGrid = 20;
@@ -98,14 +118,21 @@ let aiDir = 'right';
 let food = {};
 let timer;
 let difficulty = '';
+let isChallengeMode = false;
+let challengeTime = 60;
+let challengeTimer = null;
+let skinUnlocked = false;
+let currentSkin = 'default';
 
 // 道具状态
 let shieldTime = 0;
 let luckyBuff = false;
 let speedBoosting = false;
 let doublePoint = false;
-let worldProps = []; // 场上随机道具
+let worldProps = [];
 const propTypes = ['shield','speed','double'];
+// 食物类型：red红色 blue蓝色 colorful彩色
+const foodTypes = ['red','blue','colorful'];
 
 // 难度参数配置
 function getDifficultyConfig(){
@@ -114,16 +141,15 @@ function getDifficultyConfig(){
     let aiMul = 1;
     switch(difficulty){
         case 'normal':
-            return {speed: baseSpeed, foodMul: 1.25, aiMul: 1, aiAttack: false};
+            return {speed: baseSpeed * 1.5, foodMul: 1.25, aiMul: 1, aiAttack: false};
         case 'hard':
-            return {speed: baseSpeed*0.85, foodMul: 0.85, aiMul: 1.05, aiAttack: false};
+            return {speed: baseSpeed * 1.25, foodMul: 0.85, aiMul: 1.05, aiAttack: false};
         case 'hell':
-            // 炼狱：速度+75%，食物刷新-75%，人机强度+55%，主动攻击
-            return {speed: baseSpeed*0.25, foodMul: 0.25, aiMul: 1.55, aiAttack: true};
+            return {speed: baseSpeed * 0.75, foodMul: 0.25, aiMul: 1.55, aiAttack: true};
     }
 }
 
-// 生成普通食物
+// 生成食物（按概率分配类型）
 function genFood(){
     let x,y;
     do{
@@ -134,12 +160,22 @@ function genFood(){
         aiSnake.some(p=>p.x===x&&p.y===y) ||
         worldProps.some(p=>p.x===x&&p.y===y)
     );
-    food = {x,y};
+    // 概率：红色25%，蓝色70%，彩色1%
+    let r = Math.random() * 100;
+    let type;
+    if(r < 25){
+        type = 'red';
+    }else if(r < 95){
+        type = 'blue';
+    }else{
+        type = 'colorful';
+    }
+    food = {x,y,type};
 }
 
 // 生成场上随机道具
 function genWorldProp(){
-    if(Math.random()>0.3) return; // 30%概率刷新
+    if(Math.random()>0.3) return;
     let x,y;
     do{
         x = Math.floor(Math.random() * maxGrid);
@@ -154,7 +190,7 @@ function genWorldProp(){
     worldProps.push({x,y,type});
 }
 
-// 碰撞概率事件（含幸运药水加成）
+// 碰撞概率事件
 function collisionRandomEvent(){
     if(shieldTime > 0){
         shieldTime--;
@@ -184,6 +220,7 @@ function collisionRandomEvent(){
         console.log("碰撞：只剩蛇头！");
     }else{
         clearInterval(timer);
+        clearInterval(challengeTimer);
         gameOver();
     }
 }
@@ -215,7 +252,7 @@ function checkPropPick(){
     }
 }
 
-// AI移动（炼狱主动追击玩家）
+// AI移动
 function aiMove(){
     let head = {...aiSnake[0]};
     const cfg = getDifficultyConfig();
@@ -263,14 +300,10 @@ function playerMove(){
         case 'right': head.x++;break;
     }
 
+    // 边界碰撞
     if(head.x < 0||head.x>=maxGrid||head.y<0||head.y>=maxGrid){
         clearInterval(timer);
-        gameOver();
-        return;
-    }
-
-    if(playerSnake.some(p=>p.x===head.x&&p.y===head.y)){
-        clearInterval(timer);
+        clearInterval(challengeTimer);
         gameOver();
         return;
     }
@@ -284,8 +317,40 @@ function playerMove(){
         if(doublePoint) add *=2;
         score += add;
         scoreDom.innerText=score;
+        let growNum = 0;
+        // 红色食物：长度×2
+        if(food.type === 'red'){
+            growNum = 1;
+        }
+        // 蓝色食物：长度+2
+        else if(food.type === 'blue'){
+            growNum = 2;
+        }
+        // 彩色食物：随机道具效果+长度×2
+        else if(food.type === 'colorful'){
+            growNum = 1;
+            let randProp = propTypes[Math.floor(Math.random()*propTypes.length)];
+            switch(randProp){
+                case 'shield': shieldTime=5;break;
+                case 'speed': speedBoosting=true;setTimeout(()=>speedBoosting=false,3000);break;
+                case 'double': doublePoint=true;setTimeout(()=>doublePoint=false,5000);break;
+            }
+        }
+        // 长度增长
+        for(let i=0;i<growNum;i++){
+            playerSnake.push(playerSnake[playerSnake.length-1]);
+        }
+        updatePropUI();
         genFood();
         genWorldProp();
+
+        // 挑战模式检测积分
+        if(isChallengeMode && gamePoint >=50 && !skinUnlocked){
+            skinUnlocked = true;
+            currentSkin = 'maid';
+            skinStatusDom.innerText = "皮肤状态：已解锁（女仆爱丽丝）";
+            skinUnlockPanel.style.display = 'block';
+        }
     }else{
         playerSnake.pop();
     }
@@ -306,16 +371,38 @@ function killAiGetPoint(){
 
 // 绘制画面
 function draw(){
-    ctx.fillStyle='#000';
+    // 炼狱模式切换雷电背景
+    if(difficulty === 'hell'){
+        // 雷电背景渐变模拟
+        let grad = ctx.createLinearGradient(0,0,400,400);
+        grad.addColorStop(0,'#0a192f');
+        grad.addColorStop(0.5,'#102a43');
+        grad.addColorStop(1,'#000');
+        ctx.fillStyle = grad;
+    }else{
+        ctx.fillStyle='#000';
+    }
     ctx.fillRect(0,0,400,400);
-    // 玩家蛇
-    ctx.fillStyle='#4CAF50';
+
+    // 皮肤切换：女仆爱丽丝皮肤改为青色渐变
+    if(currentSkin === 'maid'){
+        ctx.fillStyle='#00e5ff';
+    }else{
+        ctx.fillStyle='#4CAF50';
+    }
     playerSnake.forEach(p=>ctx.fillRect(p.x*size,p.y*size,size-1,size-1));
+
     // AI蛇
     ctx.fillStyle='#c044ff';
     aiSnake.forEach(p=>ctx.fillRect(p.x*size,p.y*size,size-1,size-1));
-    // 普通食物
-    ctx.fillStyle='#ff5722';
+    // 不同类型食物
+    if(food.type === 'red'){
+        ctx.fillStyle='#ff5722';
+    }else if(food.type === 'blue'){
+        ctx.fillStyle='#0099ff';
+    }else if(food.type === 'colorful'){
+        ctx.fillStyle='#ff00ff';
+    }
     ctx.fillRect(food.x*size,food.y*size,size-1,size-1);
     // 场上道具
     worldProps.forEach(p=>{
@@ -328,38 +415,32 @@ function draw(){
     })
 }
 
-// 更新道具UI显示
+// 更新道具UI
 function updatePropUI(){
     shieldPropDom.innerText = `护盾:${shieldTime}`;
     doublePropDom.innerText = doublePoint ? '双倍积分:开启' : '双倍积分:关闭';
 }
 
-// 手机方向按键控制
+// 方向按键，无反向限制
 function setDir(d){
-    switch(d){
-        case 'up': if(dir!=='down') nextDir='up';break;
-        case 'down': if(dir!=='up') nextDir='down';break;
-        case 'left': if(dir!=='right') nextDir='left';break;
-        case 'right': if(dir!=='left') nextDir='right';break;
-    }
+    nextDir = d;
 }
 
-// 加速按键按下
+// 加速按键
 function speedBoost(){
     speedBoosting = true;
 }
-// 加速松开
 function speedDown(){
     speedBoosting = false;
 }
 
-// 键盘兼容
+// 键盘控制
 document.addEventListener('keydown',e=>{
     switch(e.key){
-        case 'ArrowUp': if(dir!=='down') nextDir='up';break;
-        case 'ArrowDown': if(dir!=='up') nextDir='down';break;
-        case 'ArrowLeft': if(dir!=='right') nextDir='left';break;
-        case 'ArrowRight': if(dir!=='left') nextDir='right';break;
+        case 'ArrowUp': nextDir='up';break;
+        case 'ArrowDown': nextDir='down';break;
+        case 'ArrowLeft': nextDir='left';break;
+        case 'ArrowRight': nextDir='right';break;
         case ' ': if(difficulty==='hell') killAiGetPoint();break;
     }
 })
@@ -384,11 +465,47 @@ function buyProp(type){
     }
 }
 
-// 游戏主循环
+// 购买皮肤
+function buySkin(){
+    if(gamePoint >=30){
+        gamePoint -=30;
+        skinUnlocked = true;
+        currentSkin = 'maid';
+        pointDom.innerText = gamePoint;
+        gamePointDom.innerText = gamePoint;
+        skinStatusDom.innerText = "皮肤状态：已解锁（女仆爱丽丝）";
+        alert("成功购买女仆爱丽丝皮肤！");
+    }else{
+        alert("积分不足，需要30积分！");
+    }
+}
+
+// 关闭皮肤解锁弹窗
+function closeSkinPanel(){
+    skinUnlockPanel.style.display = 'none';
+}
+
+// 挑战模式倒计时
+function startChallengeCountdown(){
+    challengeTimer = setInterval(()=>{
+        challengeTime--;
+        timeLeftDom.innerText = challengeTime;
+        if(challengeTime <=0){
+            clearInterval(challengeTimer);
+            clearInterval(timer);
+            if(gamePoint <50){
+                alert("挑战失败，积分未达到50，皮肤未解锁");
+            }
+            gameOver();
+        }
+    },1000);
+}
+
+// 游戏循环
 function gameLoop(){
     let cfg = getDifficultyConfig();
     let speed = cfg.speed;
-    if(speedBoosting) speed *= 0.6; // 加速后速度提升40%
+    if(speedBoosting) speed *= 0.6;
     playerMove();
     aiMove();
     draw();
@@ -398,6 +515,8 @@ function gameLoop(){
 // 开始游戏
 function startGame(type){
     difficulty = type;
+    isChallengeMode = false;
+    countdownDom.style.display = 'none';
     mainMenu.style.display = 'none';
     gameInfo.style.display = 'block';
     gameCanvas.style.display = 'block';
@@ -405,6 +524,24 @@ function startGame(type){
     endMenu.style.display = 'none';
     resetGame();
     genFood();
+    gameLoop();
+}
+
+// 开启挑战模式
+function startChallenge(){
+    difficulty = 'normal';
+    isChallengeMode = true;
+    challengeTime = 60;
+    timeLeftDom.innerText = 60;
+    countdownDom.style.display = 'block';
+    mainMenu.style.display = 'none';
+    gameInfo.style.display = 'block';
+    gameCanvas.style.display = 'block';
+    controlPanel.style.display = 'flex';
+    endMenu.style.display = 'none';
+    resetGame();
+    genFood();
+    startChallengeCountdown();
     gameLoop();
 }
 
@@ -431,6 +568,7 @@ function resetGame(){
 // 游戏结束
 function gameOver(){
     clearTimeout(timer);
+    clearInterval(challengeTimer);
     gameCanvas.style.display = 'none';
     controlPanel.style.display = 'none';
     endMenu.style.display = 'block';
@@ -438,12 +576,17 @@ function gameOver(){
 
 // 重新开始
 function restartGame(){
-    startGame(difficulty);
+    if(isChallengeMode){
+        startChallenge();
+    }else{
+        startGame(difficulty);
+    }
 }
 
 // 返回主菜单
 function backToMenu(){
     clearTimeout(timer);
+    clearInterval(challengeTimer);
     mainMenu.style.display = 'block';
     gameInfo.style.display = 'none';
     gameCanvas.style.display = 'none';
