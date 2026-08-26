@@ -34,6 +34,11 @@ button{padding:8px 16px;margin:4px;font-size:16px;border:none;border-radius:8px;
 /* 皮肤弹窗 */
 .skin-panel{display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#333;padding:20px;border-radius:12px;z-index:999}
 .countdown{font-size:22px;color:#ffeb3b;font-weight:bold;margin:10px 0}
+
+/* 死亡弹窗样式 */
+.death-panel{display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#1a1a1a;padding:25px;border-radius:12px;z-index:1000;border:2px solid #f44336}
+.death-title{font-size:24px;color:#f44336;margin-bottom:20px;font-weight:bold}
+.death-btn-group{display:flex;gap:20px;justify-content:center}
 </style>
 </head>
 <body>
@@ -78,6 +83,15 @@ button{padding:8px 16px;margin:4px;font-size:16px;border:none;border-radius:8px;
     <button class="back" onclick="backToMenu()">回到主界面</button>
 </div>
 
+<!-- AI死亡专属弹窗 -->
+<div class="death-panel" id="deathPanel">
+    <div class="death-title">你已死亡</div>
+    <div class="death-btn-group">
+        <button class="restart" onclick="restartGame()">重新开始</button>
+        <button class="back" onclick="backToMenu()">返回界面</button>
+    </div>
+</div>
+
 <div class="skin-panel" id="skinUnlockPanel">
     <h3>恭喜！挑战成功</h3>
     <p>已解锁女仆爱丽丝皮肤</p>
@@ -104,6 +118,7 @@ const timeLeftDom = document.getElementById('timeLeft');
 const skinStatusDom = document.getElementById('skinStatus');
 const skinUnlockPanel = document.getElementById('skinUnlockPanel');
 const propBar = document.getElementById('propBar');
+const deathPanel = document.getElementById('deathPanel');
 
 const size = 20;
 const maxGrid = 20;
@@ -248,10 +263,15 @@ function collisionRandomEvent(){
         playerSnake = [playerSnake[0]];
         console.log("碰撞：只剩蛇头！");
     }else{
+        // 触发AI死亡专属弹窗
         clearInterval(timer);
         clearInterval(challengeTimer);
         clearInterval(speedTimer);
-        gameOver();
+        gameCanvas.style.display = 'none';
+        joystick.style.display = 'none';
+        speedBtn.style.display = 'none';
+        propBar.style.display = 'none';
+        deathPanel.style.display = 'block';
     }
 }
 
@@ -606,6 +626,7 @@ function startGame(type){
     speedBtn.style.display = 'block';
     propBar.style.display = 'flex';
     endMenu.style.display = 'none';
+    deathPanel.style.display = 'none';
     resetGame();
     genFood();
     gameLoop();
@@ -629,6 +650,7 @@ function startChallenge(){
     speedBtn.style.display = 'block';
     propBar.style.display = 'flex';
     endMenu.style.display = 'none';
+    deathPanel.style.display = 'none';
     resetGame();
     genFood();
     startChallengeCountdown();
@@ -655,7 +677,7 @@ function resetGame(){
     updatePropUI();
 }
 
-// 游戏结束
+// 游戏结束（边界死亡通用结束界面）
 function gameOver(){
     clearTimeout(timer);
     clearInterval(challengeTimer);
@@ -669,6 +691,7 @@ function gameOver(){
 
 // 重新开始
 function restartGame(){
+    deathPanel.style.display = 'none';
     if(isChallengeMode){
         startChallenge();
     }else{
@@ -678,6 +701,7 @@ function restartGame(){
 
 // 返回主菜单
 function backToMenu(){
+    deathPanel.style.display = 'none';
     clearTimeout(timer);
     clearInterval(challengeTimer);
     clearInterval(speedTimer);
