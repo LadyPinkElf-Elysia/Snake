@@ -24,7 +24,7 @@ body{
     width:70vh;
     height:70vh;
     max-width:90vw;
-    max-height:90vw;
+    max-height:70vh;
 }
 
 .info{
@@ -59,18 +59,19 @@ button{
 
 .game-layout{
     display:flex;
+    flex-direction:column;
     justify-content:center;
     align-items:center;
-    gap:18px;
-    height:calc(100vh - 60px);
+    gap:12px;
+    height:calc(100vh - 130px);
 }
 
-.left-panel, .right-panel{
+.bottom-control-panel{
     display:flex;
-    flex-direction:column;
-    align-items:center;
     justify-content:center;
-    gap:10px;
+    align-items:center;
+    gap:30px;
+    padding-bottom:16px;
 }
 
 .joystick-area{
@@ -239,29 +240,23 @@ button{
 <div class="info" id="gameInfo" style="display:none">
     分数：<span id="score">0</span> | 积分：<span id="gamePoint">0</span>
     <div class="countdown" id="countdown" style="display:none">剩余时间：<span id="timeLeft">60</span>秒</div>
+    <div class="prop-bar">
+        <div class="prop-item" id="shieldProp">护盾:0</div>
+        <div class="prop-item" id="doubleProp">双倍积分:关闭</div>
+    </div>
 </div>
 
 <div class="game-layout" id="gameLayout" style="display:none">
-    <div class="left-panel">
-        <div class="prop-bar">
-            <div class="prop-item" id="shieldProp">护盾:0</div>
-            <div class="prop-item" id="doubleProp">双倍积分:关闭</div>
-        </div>
-
-        <div class="joystick-area" id="joystick">
-            <div class="joystick-bg"></div>
-            <div class="joystick-thumb" id="thumb"></div>
-        </div>
-
-        <button class="speed-btn" id="speedBtn">加速</button>
-    </div>
-
     <canvas id="game" width="400" height="400"></canvas>
+    <p>键盘方向键控制｜空格键击杀AI蛇</p>
+</div>
 
-    <div class="right-panel">
-        <p>键盘方向键控制</p>
-        <p>空格键击杀AI蛇</p>
+<div class="bottom-control-panel" id="bottomControl" style="display:none;">
+    <div class="joystick-area" id="joystick">
+        <div class="joystick-bg"></div>
+        <div class="joystick-thumb" id="thumb"></div>
     </div>
+    <button class="speed-btn" id="speedBtn">加速</button>
 </div>
 
 <div class="menu" id="endMenu">
@@ -294,6 +289,7 @@ const mainMenu = document.getElementById('mainMenu');
 const gameInfo = document.getElementById('gameInfo');
 const gameCanvas = document.getElementById('game');
 const gameLayout = document.getElementById('gameLayout');
+const bottomControl = document.getElementById('bottomControl');
 const endMenu = document.getElementById('endMenu');
 const joystick = document.getElementById('joystick');
 const thumb = document.getElementById('thumb');
@@ -432,8 +428,7 @@ function headCollision(){
     if(r < 0.5){
         clearInterval(timer);clearInterval(challengeTimer);clearInterval(speedTimer);
         gameCanvas.style.display='none';
-        joystick.style.display='none';
-        speedBtn.style.display='none';
+        bottomControl.style.display='none';
         deathPanel.style.display='block';
     }else{
         aiHitPlayerBody();
@@ -460,8 +455,7 @@ function collisionRandomEvent(){
     else{
         clearInterval(timer);clearInterval(challengeTimer);clearInterval(speedTimer);
         gameCanvas.style.display='none';
-        joystick.style.display='none';
-        speedBtn.style.display='none';
+        bottomControl.style.display='none';
         deathPanel.style.display='block';
     }
 }
@@ -532,8 +526,7 @@ function playerMove(){
     if(head.x<0||head.x>=maxGrid||head.y<0||head.y>=maxGrid){
         clearInterval(timer);clearInterval(challengeTimer);clearInterval(speedTimer);
         gameCanvas.style.display='none';
-        joystick.style.display='none';
-        speedBtn.style.display='none';
+        bottomControl.style.display='none';
         deathPanel.style.display='block';
         return;
     }
@@ -677,8 +670,9 @@ function startGame(type){
     difficulty=type;isChallengeMode=false;
     speedFactor=0;gameRunTime=0;clearInterval(speedTimer);startSpeedTimer();
     countdownDom.style.display='none';mainMenu.style.display='none';gameInfo.style.display='block';
-    gameLayout.style.display='flex';gameCanvas.style.display='block';joystick.style.display='block';
-    speedBtn.style.display='block';endMenu.style.display='none';deathPanel.style.display='none';
+    gameLayout.style.display='flex';gameCanvas.style.display='block';
+    bottomControl.style.display='flex';
+    endMenu.style.display='none';deathPanel.style.display='none';
     resetGame();genFood();
     draw();//打开立刻渲染画面，消除黑屏
     gameLoop();
@@ -689,7 +683,8 @@ function startChallenge(){
     speedFactor=0;gameRunTime=0;clearInterval(speedTimer);startSpeedTimer();
     timeLeftDom.innerText=60;countdownDom.style.display='block';
     mainMenu.style.display='none';gameInfo.style.display='block';gameLayout.style.display='flex';
-    gameCanvas.style.display='block';joystick.style.display='block';speedBtn.style.display='block';
+    gameCanvas.style.display='block';
+    bottomControl.style.display='flex';
     endMenu.style.display='none';deathPanel.style.display='none';
     resetGame();genFood();startChallengeCountdown();
     draw();
@@ -705,7 +700,8 @@ function resetGame(){
 
 function gameOver(){
     clearTimeout(timer);clearInterval(challengeTimer);clearInterval(speedTimer);
-    gameCanvas.style.display='none';joystick.style.display='none';speedBtn.style.display='none';
+    gameCanvas.style.display='none';
+    bottomControl.style.display='none';
     gameLayout.style.display='none';endMenu.style.display='block';
 }
 
@@ -720,7 +716,7 @@ function backToMenu(){
     deathPanel.style.display='none';
     clearTimeout(timer);clearInterval(challengeTimer);clearInterval(speedTimer);
     gameLayout.style.display='none';gameCanvas.style.display='none';
-    joystick.style.display='none';speedBtn.style.display='none';
+    bottomControl.style.display='none';
     mainMenu.style.display='block';gameInfo.style.display='none';endMenu.style.display='none';
 }
 </script>
