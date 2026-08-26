@@ -2,62 +2,260 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<title>简易贪吃蛇</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>人机对战贪吃蛇 手机版</title>
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{background:#222;color:#fff;text-align:center;padding-top:30px;font-family:微软雅黑}
-#game{border:2px solid #4CAF50;background:#000;margin:0 auto}
-.info{margin-bottom:10px;font-size:18px}
+*{margin:0;padding:0;box-sizing:border-box;touch-action:manipulation}
+body{background:#222;color:#fff;text-align:center;padding-top:10px;font-family:微软雅黑;max-width:500px;margin:0 auto}
+#game{border:2px solid #4CAF50;background:#000;margin:0 auto;width:90vw;height:90vw;max-width:400px;max-height:400px}
+.info{margin-bottom:8px;font-size:16px}
+.menu{margin:15px 0}
+button{padding:8px 16px;margin:4px;font-size:16px;border:none;border-radius:8px;cursor:pointer;touch-action:manipulation}
+.normal{background:#4CAF50;color:white}
+.hard{background:#ff9800;color:white}
+.hell{background:#f44336;color:white}
+.restart{background:#2196F3}
+.back{background:#9e9e9e}
+.shop{background:#9c27b0;color:white;margin-top:8px}
+.prop{background:#00bcd4;margin:3px}
+
+/* 移动端控制区 */
+.control-area{display:flex;justify-content:space-between;align-items:center;margin-top:15px;padding:0 10px}
+.dir-buttons{display:grid;grid-template-columns:60px 60px 60px;grid-template-rows:60px 60px;gap:8px}
+.dir-btn{width:60px;height:60px;font-size:24px;background:#333;color:white;border-radius:10px;border:none}
+.func-buttons{display:flex;flex-direction:column;gap:8px}
+.speed-btn{width:70px;height:70px;background:#ff5722;color:white;border-radius:10px;font-size:14px}
+.prop-bar{display:flex;gap:6px;margin-top:10px;justify-content:center}
+.prop-item{padding:6px 10px;background:#444;border-radius:6px;font-size:14px}
 </style>
 </head>
 <body>
-<div class="info">分数：<span id="score">0</span></div>
-<canvas id="game" width="400" height="400"></canvas>
+<div class="menu" id="mainMenu">
+    <h2>选择难度</h2>
+    <button class="normal" onclick="startGame('normal')">普通</button>
+    <button class="hard" onclick="startGame('hard')">困难</button>
+    <button class="hell" onclick="startGame('hell')">炼狱</button>
+    <div style="margin-top:15px">
+        <h3>道具商店</h3>
+        <button class="prop" onclick="buyProp('shield')">护盾（10积分）：5秒免疫碰撞</button>
+        <button class="prop" onclick="buyProp('lucky')">幸运药水（15积分）：提升幸运概率</button>
+        <p>当前积分：<span id="point">0</span></p>
+    </div>
+</div>
+
+<div class="info" id="gameInfo" style="display:none">
+    分数：<span id="score">0</span> | 积分：<span id="gamePoint">0</span>
+</div>
+<canvas id="game" width="400" height="400" style="display:none"></canvas>
+
+<!-- 移动端控制按钮 -->
+<div class="control-area" id="controlPanel" style="display:none">
+    <div class="dir-buttons">
+        <button class="dir-btn" style="grid-column:2" ontouchstart="setDir('up')">↑</button>
+        <button class="dir-btn" ontouchstart="setDir('left')">←</button>
+        <button class="dir-btn" ontouchstart="setDir('down')">↓</button>
+        <button class="dir-btn" ontouchstart="setDir('right')">→</button>
+    </div>
+    <div class="func-buttons">
+        <button class="speed-btn" ontouchstart="speedBoost()" ontouchend="speedDown()">加速</button>
+        <div class="prop-bar">
+            <div class="prop-item" id="shieldProp">护盾:0</div>
+            <div class="prop-item" id="doubleProp">双倍积分:0</div>
+        </div>
+    </div>
+</div>
+
+<div class="menu" id="endMenu" style="display:none">
+    <h3>游戏结束</h3>
+    <button class="restart" onclick="restartGame()">重新开始</button>
+    <button class="back" onclick="backToMenu()">回到主界面</button>
+</div>
 
 <script>
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 const scoreDom = document.getElementById('score');
+const pointDom = document.getElementById('point');
+const gamePointDom = document.getElementById('gamePoint');
+const mainMenu = document.getElementById('mainMenu');
+const gameInfo = document.getElementById('gameInfo');
+const gameCanvas = document.getElementById('game');
+const endMenu = document.getElementById('endMenu');
+const controlPanel = document.getElementById('controlPanel');
+const shieldPropDom = document.getElementById('shieldProp');
+const doublePropDom = document.getElementById('doubleProp');
 
-// 格子大小
 const size = 20;
-let snake = [{x:10,y:10}];
-let food = {};
+const maxGrid = 20;
+
+let playerSnake = [{x:10,y:10}];
 let dir = 'right';
 let nextDir = 'right';
 let score = 0;
+let gamePoint = 0;
+let aiSnake = [{x:3,y:3}];
+let aiDir = 'right';
+let food = {};
 let timer;
+let difficulty = '';
 
-// 随机生成食物
+// 道具状态
+let shieldTime = 0;
+let luckyBuff = false;
+let speedBoosting = false;
+let doublePoint = false;
+let worldProps = []; // 场上随机道具
+const propTypes = ['shield','speed','double'];
+
+// 难度参数配置
+function getDifficultyConfig(){
+    let baseSpeed = 220;
+    let foodMul = 1;
+    let aiMul = 1;
+    switch(difficulty){
+        case 'normal':
+            return {speed: baseSpeed, foodMul: 1.25, aiMul: 1, aiAttack: false};
+        case 'hard':
+            return {speed: baseSpeed*0.85, foodMul: 0.85, aiMul: 1.05, aiAttack: false};
+        case 'hell':
+            // 炼狱：速度+75%，食物刷新-75%，人机强度+55%，主动攻击
+            return {speed: baseSpeed*0.25, foodMul: 0.25, aiMul: 1.55, aiAttack: true};
+    }
+}
+
+// 生成普通食物
 function genFood(){
     let x,y;
     do{
-        x = Math.floor(Math.random()*20);
-        y = Math.floor(Math.random()*20);
-    }while(snake.some(p=>p.x===x&&p.y===y));
+        x = Math.floor(Math.random() * maxGrid);
+        y = Math.floor(Math.random() * maxGrid);
+    }while(
+        playerSnake.some(p=>p.x===x&&p.y===y) ||
+        aiSnake.some(p=>p.x===x&&p.y===y) ||
+        worldProps.some(p=>p.x===x&&p.y===y)
+    );
     food = {x,y};
 }
 
-// 绘制
-function draw(){
-    ctx.fillStyle='#000';
-    ctx.fillRect(0,0,400,400);
-
-    // 画蛇
-    ctx.fillStyle='#4CAF50';
-    snake.forEach(p=>{
-        ctx.fillRect(p.x*size,p.y*size,size-1,size-1);
-    })
-
-    // 画食物
-    ctx.fillStyle='#ff5722';
-    ctx.fillRect(food.x*size,food.y*size,size-1,size-1);
+// 生成场上随机道具
+function genWorldProp(){
+    if(Math.random()>0.3) return; // 30%概率刷新
+    let x,y;
+    do{
+        x = Math.floor(Math.random() * maxGrid);
+        y = Math.floor(Math.random() * maxGrid);
+    }while(
+        playerSnake.some(p=>p.x===x&&p.y===y) ||
+        aiSnake.some(p=>p.x===x&&p.y===y) ||
+        worldProps.some(p=>p.x===x&&p.y===y) ||
+        (food.x===x&&food.y===y)
+    );
+    let type = propTypes[Math.floor(Math.random()*propTypes.length)];
+    worldProps.push({x,y,type});
 }
 
-// 移动
-function move(){
+// 碰撞概率事件（含幸运药水加成）
+function collisionRandomEvent(){
+    if(shieldTime > 0){
+        shieldTime--;
+        updatePropUI();
+        return;
+    }
+    let r = Math.random() * 100;
+    let dieRate = 50;
+    let halfRate = 25;
+    let headRate = 30;
+    let safeRate = 5;
+    if(luckyBuff){
+        safeRate *= 1.5;
+        halfRate *= 1.5;
+        headRate *= 1.5;
+        dieRate = 100 - safeRate - halfRate - headRate;
+    }
+
+    if(r < safeRate){
+        console.log("碰撞：幸运无事！");
+        return;
+    }else if(r < safeRate + halfRate){
+        playerSnake = playerSnake.slice(0, Math.max(1, Math.floor(playerSnake.length / 2)));
+        console.log("碰撞：身体减半！");
+    }else if(r < safeRate + halfRate + headRate){
+        playerSnake = [playerSnake[0]];
+        console.log("碰撞：只剩蛇头！");
+    }else{
+        clearInterval(timer);
+        gameOver();
+    }
+}
+
+// 检测玩家与AI碰撞
+function checkAiCollision(){
+    let head = playerSnake[0];
+    for(let p of aiSnake){
+        if(p.x === head.x && p.y === head.y) return true;
+    }
+    return false;
+}
+
+// 检测拾取场上道具
+function checkPropPick(){
+    let head = playerSnake[0];
+    for(let i=0;i<worldProps.length;i++){
+        let p = worldProps[i];
+        if(p.x===head.x&&p.y===head.y){
+            switch(p.type){
+                case 'shield': shieldTime=5;break;
+                case 'speed': speedBoosting=true;setTimeout(()=>speedBoosting=false,3000);break;
+                case 'double': doublePoint=true;setTimeout(()=>doublePoint=false,5000);break;
+            }
+            worldProps.splice(i,1);
+            updatePropUI();
+            return;
+        }
+    }
+}
+
+// AI移动（炼狱主动追击玩家）
+function aiMove(){
+    let head = {...aiSnake[0]};
+    const cfg = getDifficultyConfig();
+    if(cfg.aiAttack){
+        if(playerSnake[0].x > head.x) aiDir = "right";
+        else if(playerSnake[0].x < head.x) aiDir = "left";
+        else if(playerSnake[0].y > head.y) aiDir = "down";
+        else if(playerSnake[0].y < head.y) aiDir = "up";
+    }else{
+        if(food.x > head.x) aiDir = "right";
+        else if(food.x < head.x) aiDir = "left";
+        else if(food.y > head.y) aiDir = "down";
+        else if(food.y < head.y) aiDir = "up";
+    }
+
+    switch(aiDir){
+        case 'up': head.y--; break;
+        case 'down': head.y++; break;
+        case 'left': head.x--; break;
+        case 'right': head.x++; break;
+    }
+
+    if(head.x < 0) head.x = maxGrid - 1;
+    if(head.x >= maxGrid) head.x = 0;
+    if(head.y < 0) head.y = maxGrid - 1;
+    if(head.y >= maxGrid) head.y = 0;
+
+    aiSnake.unshift(head);
+    if(head.x === food.x && head.y === food.y){
+        genFood();
+        genWorldProp();
+    }else{
+        aiSnake.pop();
+    }
+}
+
+// 玩家移动
+function playerMove(){
     dir = nextDir;
-    let head = {...snake[0]};
+    let head = {...playerSnake[0]};
     switch(dir){
         case 'up': head.y--;break;
         case 'down': head.y++;break;
@@ -65,47 +263,193 @@ function move(){
         case 'right': head.x++;break;
     }
 
-    // 撞墙判断
-    if(head.x<0||head.x>=20||head.y<0||head.y>=20){
+    if(head.x < 0||head.x>=maxGrid||head.y<0||head.y>=maxGrid){
         clearInterval(timer);
-        alert('游戏结束！最终分数：'+score);
-        return;
-    }
-    // 撞到自己
-    if(snake.some(p=>p.x===head.x&&p.y===head.y)){
-        clearInterval(timer);
-        alert('游戏结束！最终分数：'+score);
+        gameOver();
         return;
     }
 
-    snake.unshift(head);
+    if(playerSnake.some(p=>p.x===head.x&&p.y===head.y)){
+        clearInterval(timer);
+        gameOver();
+        return;
+    }
 
-    // 吃到食物
+    playerSnake.unshift(head);
+    checkAiCollision() && collisionRandomEvent();
+    checkPropPick();
+
     if(head.x===food.x&&head.y===food.y){
-        score++;
+        let add = 1;
+        if(doublePoint) add *=2;
+        score += add;
         scoreDom.innerText=score;
         genFood();
+        genWorldProp();
     }else{
-        snake.pop();
+        playerSnake.pop();
     }
 }
 
-// 键盘控制
+// 炼狱击杀AI积分
+function killAiGetPoint(){
+    if(difficulty !== 'hell') return;
+    let add = (aiSnake.length + 1) * 2;
+    if(add > 40) add = add * 0.85;
+    if(doublePoint) add *=2;
+    add = Math.floor(add);
+    gamePoint += add;
+    gamePointDom.innerText = gamePoint;
+    pointDom.innerText = gamePoint;
+    aiSnake = [{x:Math.floor(Math.random()*20), y:Math.floor(Math.random()*20)}];
+}
+
+// 绘制画面
+function draw(){
+    ctx.fillStyle='#000';
+    ctx.fillRect(0,0,400,400);
+    // 玩家蛇
+    ctx.fillStyle='#4CAF50';
+    playerSnake.forEach(p=>ctx.fillRect(p.x*size,p.y*size,size-1,size-1));
+    // AI蛇
+    ctx.fillStyle='#c044ff';
+    aiSnake.forEach(p=>ctx.fillRect(p.x*size,p.y*size,size-1,size-1));
+    // 普通食物
+    ctx.fillStyle='#ff5722';
+    ctx.fillRect(food.x*size,food.y*size,size-1,size-1);
+    // 场上道具
+    worldProps.forEach(p=>{
+        switch(p.type){
+            case 'shield': ctx.fillStyle='#00bcd4';break;
+            case 'speed': ctx.fillStyle='#ffeb3b';break;
+            case 'double': ctx.fillStyle='#9c27b0';break;
+        }
+        ctx.fillRect(p.x*size,p.y*size,size-1,size-1);
+    })
+}
+
+// 更新道具UI显示
+function updatePropUI(){
+    shieldPropDom.innerText = `护盾:${shieldTime}`;
+    doublePropDom.innerText = doublePoint ? '双倍积分:开启' : '双倍积分:关闭';
+}
+
+// 手机方向按键控制
+function setDir(d){
+    switch(d){
+        case 'up': if(dir!=='down') nextDir='up';break;
+        case 'down': if(dir!=='up') nextDir='down';break;
+        case 'left': if(dir!=='right') nextDir='left';break;
+        case 'right': if(dir!=='left') nextDir='right';break;
+    }
+}
+
+// 加速按键按下
+function speedBoost(){
+    speedBoosting = true;
+}
+// 加速松开
+function speedDown(){
+    speedBoosting = false;
+}
+
+// 键盘兼容
 document.addEventListener('keydown',e=>{
     switch(e.key){
         case 'ArrowUp': if(dir!=='down') nextDir='up';break;
         case 'ArrowDown': if(dir!=='up') nextDir='down';break;
         case 'ArrowLeft': if(dir!=='right') nextDir='left';break;
         case 'ArrowRight': if(dir!=='left') nextDir='right';break;
+        case ' ': if(difficulty==='hell') killAiGetPoint();break;
     }
 })
 
-// 启动游戏：蛇速度调慢（原150ms改为220ms），食物刷新频率提升25%
-genFood();
-timer = setInterval(()=>{
-    move();
+// 道具购买
+function buyProp(type){
+    if(type === 'shield' && gamePoint >=10){
+        gamePoint -=10;
+        shieldTime = 5;
+        pointDom.innerText = gamePoint;
+        gamePointDom.innerText = gamePoint;
+        updatePropUI();
+        alert("护盾已激活，5秒内免疫碰撞伤害！");
+    }else if(type === 'lucky' && gamePoint >=15){
+        gamePoint -=15;
+        luckyBuff = true;
+        pointDom.innerText = gamePoint;
+        gamePointDom.innerText = gamePoint;
+        alert("幸运药水生效，幸运概率大幅提升！");
+    }else{
+        alert("积分不足！");
+    }
+}
+
+// 游戏主循环
+function gameLoop(){
+    let cfg = getDifficultyConfig();
+    let speed = cfg.speed;
+    if(speedBoosting) speed *= 0.6; // 加速后速度提升40%
+    playerMove();
+    aiMove();
     draw();
-},220);
+    timer = setTimeout(gameLoop, speed);
+}
+
+// 开始游戏
+function startGame(type){
+    difficulty = type;
+    mainMenu.style.display = 'none';
+    gameInfo.style.display = 'block';
+    gameCanvas.style.display = 'block';
+    controlPanel.style.display = 'flex';
+    endMenu.style.display = 'none';
+    resetGame();
+    genFood();
+    gameLoop();
+}
+
+// 重置游戏
+function resetGame(){
+    playerSnake = [{x:10,y:10}];
+    aiSnake = [{x:3,y:3}];
+    dir = 'right';
+    nextDir = 'right';
+    aiDir = 'right';
+    score = 0;
+    gamePoint = 0;
+    shieldTime = 0;
+    luckyBuff = false;
+    speedBoosting = false;
+    doublePoint = false;
+    worldProps = [];
+    scoreDom.innerText = 0;
+    gamePointDom.innerText = 0;
+    pointDom.innerText = 0;
+    updatePropUI();
+}
+
+// 游戏结束
+function gameOver(){
+    clearTimeout(timer);
+    gameCanvas.style.display = 'none';
+    controlPanel.style.display = 'none';
+    endMenu.style.display = 'block';
+}
+
+// 重新开始
+function restartGame(){
+    startGame(difficulty);
+}
+
+// 返回主菜单
+function backToMenu(){
+    clearTimeout(timer);
+    mainMenu.style.display = 'block';
+    gameInfo.style.display = 'none';
+    gameCanvas.style.display = 'none';
+    controlPanel.style.display = 'none';
+    endMenu.style.display = 'none';
+}
 </script>
 </body>
 </html>
