@@ -6,29 +6,16 @@
 <title>蔚蓝档案贪吃蛇 横屏版</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;touch-action:manipulation}
+html,body{
+    width:100%;
+    height:100%;
+}
 body{
-    background:#222;
+    background:#2b2b2b;
     color:#fff;
     text-align:center;
     font-family:微软雅黑;
     overflow:hidden;
-    width:100vw;
-    height:100vh;
-    /* 强制横屏，竖屏自动旋转 */
-    transform: rotate(0deg);
-}
-
-/* 竖屏强制旋转为横屏 */
-@media screen and (orientation:portrait){
-    body{
-        transform:rotate(90deg);
-        transform-origin:left top;
-        width:100vh;
-        height:100vw;
-        position:absolute;
-        top:0;
-        left:0;
-    }
 }
 
 #game{
@@ -62,15 +49,14 @@ button{
 .normal{background:#4CAF50;color:white}
 .hard{background:#ff9800;color:white}
 .hell{background:#f44336;color:white}
-.challenge{background:#00bcd4;color:white}
 .peace{background:#8bc34a;color:white}
+.challenge{background:#00bcd4;color:white}
 .restart{background:#2196F3}
 .back{background:#9e9e9e}
 .shop{background:#9c27b0;color:white;margin-top:8px}
 .prop{background:#673ab7;margin:3px}
 .skin-btn{background:#e91e63;color:white;margin:5px}
 
-/* 横屏主布局 */
 .game-layout{
     display:flex;
     justify-content:center;
@@ -87,7 +73,6 @@ button{
     gap:10px;
 }
 
-/* 轮盘摇杆区域 */
 .joystick-area{
     position:relative;
     width:150px;
@@ -114,7 +99,6 @@ button{
     touch-action:none;
 }
 
-/* 右下角加速按钮 */
 .speed-btn{
     width:64px;
     height:64px;
@@ -138,7 +122,6 @@ button{
     font-size:14px;
 }
 
-/* 颜色选择器 */
 .color-select{
     margin:10px 0;
     display:flex;
@@ -161,7 +144,6 @@ button{
     transform:scale(1.1);
 }
 
-/* 皮肤弹窗 */
 .skin-panel{
     display:none;
     position:fixed;
@@ -181,7 +163,6 @@ button{
     margin:10px 0;
 }
 
-/* 死亡弹窗样式 */
 .death-panel{
     display:none;
     position:fixed;
@@ -208,7 +189,6 @@ button{
     justify-content:center;
 }
 
-/* 游戏结束菜单 */
 .menu#endMenu{
     position:fixed;
     top:50%;
@@ -290,7 +270,6 @@ button{
     <button class="back" onclick="backToMenu()">回到主界面</button>
 </div>
 
-<!-- AI死亡专属弹窗 -->
 <div class="death-panel" id="deathPanel">
     <div class="death-title">你已死亡</div>
     <div class="death-btn-group">
@@ -382,7 +361,7 @@ function getDifficultyConfig(){
         case 'hell':
             return {speed: baseSpeed * 0.75, aiAttack: true};
         case 'peace':
-            return {speed: baseSpeed * 1.5, aiAttack: false, noDeath: true, noWallPass: true};
+            return {speed: baseSpeed * 1.5, aiAttack: false, noDeathHeadHit:true};
     }
 }
 
@@ -436,7 +415,6 @@ function genWorldProp(){
     worldProps.push({x,y,type});
 }
 
-// AI蛇头撞到玩家身体，AI死亡，身体变食物
 function aiHitPlayerBody(){
     aiSnake.forEach(seg=>{
         worldProps.push({x:seg.x,y:seg.y,type:'gray'});
@@ -447,10 +425,9 @@ function aiHitPlayerBody(){
     pointDom.innerText=gamePoint;
 }
 
-// 蛇头相撞和平模式不死亡，普通模式50%概率判定
 function headCollision(){
     const cfg = getDifficultyConfig();
-    if(cfg.noDeath) return;
+    if(cfg.noDeathHeadHit) return;
     let r = Math.random();
     if(r < 0.5){
         clearInterval(timer);clearInterval(challengeTimer);clearInterval(speedTimer);
@@ -465,7 +442,7 @@ function headCollision(){
 
 function collisionRandomEvent(){
     const cfg = getDifficultyConfig();
-    if(cfg.noDeath) return;
+    if(cfg.noDeathHeadHit) return;
     if(shieldTime > 0){
         shieldTime--;
         updatePropUI();
@@ -551,8 +528,7 @@ function playerMove(){
         case 'up':head.y--;break;case 'down':head.y++;break;
         case 'left':head.x--;break;case 'right':head.x++;break;
     }
-    const cfg = getDifficultyConfig();
-    // 和平模式取消穿墙，所有模式撞墙都判定死亡
+    //全部模式撞墙直接死亡，和平模式不再穿墙
     if(head.x<0||head.x>=maxGrid||head.y<0||head.y>=maxGrid){
         clearInterval(timer);clearInterval(challengeTimer);clearInterval(speedTimer);
         gameCanvas.style.display='none';
@@ -703,7 +679,9 @@ function startGame(type){
     countdownDom.style.display='none';mainMenu.style.display='none';gameInfo.style.display='block';
     gameLayout.style.display='flex';gameCanvas.style.display='block';joystick.style.display='block';
     speedBtn.style.display='block';endMenu.style.display='none';deathPanel.style.display='none';
-    resetGame();genFood();gameLoop();
+    resetGame();genFood();
+    draw();//打开立刻渲染画面，消除黑屏
+    gameLoop();
 }
 
 function startChallenge(){
@@ -713,7 +691,9 @@ function startChallenge(){
     mainMenu.style.display='none';gameInfo.style.display='block';gameLayout.style.display='flex';
     gameCanvas.style.display='block';joystick.style.display='block';speedBtn.style.display='block';
     endMenu.style.display='none';deathPanel.style.display='none';
-    resetGame();genFood();startChallengeCountdown();gameLoop();
+    resetGame();genFood();startChallengeCountdown();
+    draw();
+    gameLoop();
 }
 
 function resetGame(){
