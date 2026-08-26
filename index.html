@@ -21,12 +21,13 @@ button{padding:8px 16px;margin:4px;font-size:16px;border:none;border-radius:8px;
 .prop{background:#673ab7;margin:3px}
 .skin-btn{background:#e91e63;color:white;margin:5px}
 
-/* 移动端控制区 */
-.control-area{display:flex;justify-content:space-between;align-items:center;margin-top:15px;padding:0 10px}
-.dir-buttons{display:grid;grid-template-columns:60px 60px 60px;grid-template-rows:60px 60px;gap:8px}
-.dir-btn{width:60px;height:60px;font-size:24px;background:#333;color:white;border-radius:10px;border:none}
-.func-buttons{display:flex;flex-direction:column;gap:8px}
-.speed-btn{width:70px;height:70px;background:#ff5722;color:white;border-radius:10px;font-size:14px}
+/* 轮盘摇杆区域 */
+.joystick-area{position:relative;width:160px;height:160px;margin:15px auto}
+.joystick-bg{width:160px;height:160px;border-radius:50%;background:#333;border:2px solid #555}
+.joystick-thumb{width:50px;height:50px;border-radius:50%;background:#00bcd4;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);touch-action:none}
+
+/* 右下角加速按钮 */
+.speed-btn{position:absolute;right:20px;bottom:20px;width:70px;height:70px;background:#ff5722;color:white;border-radius:10px;font-size:14px;border:none}
 .prop-bar{display:flex;gap:6px;margin-top:10px;justify-content:center}
 .prop-item{padding:6px 10px;background:#444;border-radius:6px;font-size:14px}
 
@@ -58,21 +59,17 @@ button{padding:8px 16px;margin:4px;font-size:16px;border:none;border-radius:8px;
 </div>
 <canvas id="game" width="400" height="400" style="display:none"></canvas>
 
-<!-- 移动端控制按钮 -->
-<div class="control-area" id="controlPanel" style="display:none">
-    <div class="dir-buttons">
-        <button class="dir-btn" style="grid-column:2" ontouchstart="setDir('up')">↑</button>
-        <button class="dir-btn" ontouchstart="setDir('left')">←</button>
-        <button class="dir-btn" ontouchstart="setDir('down')">↓</button>
-        <button class="dir-btn" ontouchstart="setDir('right')">→</button>
-    </div>
-    <div class="func-buttons">
-        <button class="speed-btn" ontouchstart="speedBoost()" ontouchend="speedDown()">加速</button>
-        <div class="prop-bar">
-            <div class="prop-item" id="shieldProp">护盾:0</div>
-            <div class="prop-item" id="doubleProp">双倍积分:0</div>
-        </div>
-    </div>
+<!-- 摇杆轮盘 -->
+<div class="joystick-area" id="joystick" style="display:none">
+    <div class="joystick-bg"></div>
+    <div class="joystick-thumb" id="thumb"></div>
+</div>
+<!-- 加速按钮 -->
+<button class="speed-btn" id="speedBtn" style="display:none">加速</button>
+
+<div class="prop-bar" id="propBar" style="display:none">
+    <div class="prop-item" id="shieldProp">护盾:0</div>
+    <div class="prop-item" id="doubleProp">双倍积分:关闭</div>
 </div>
 
 <div class="menu" id="endMenu" style="display:none">
@@ -97,13 +94,16 @@ const mainMenu = document.getElementById('mainMenu');
 const gameInfo = document.getElementById('gameInfo');
 const gameCanvas = document.getElementById('game');
 const endMenu = document.getElementById('endMenu');
-const controlPanel = document.getElementById('controlPanel');
+const joystick = document.getElementById('joystick');
+const thumb = document.getElementById('thumb');
+const speedBtn = document.getElementById('speedBtn');
 const shieldPropDom = document.getElementById('shieldProp');
 const doublePropDom = document.getElementById('doubleProp');
 const countdownDom = document.getElementById('countdown');
 const timeLeftDom = document.getElementById('timeLeft');
 const skinStatusDom = document.getElementById('skinStatus');
 const skinUnlockPanel = document.getElementById('skinUnlockPanel');
+const propBar = document.getElementById('propBar');
 
 const size = 20;
 const maxGrid = 20;
@@ -131,8 +131,18 @@ let speedBoosting = false;
 let doublePoint = false;
 let worldProps = [];
 const propTypes = ['shield','speed','double'];
-// 食物类型：red红色 blue蓝色 colorful彩色
-const foodTypes = ['red','blue','colorful'];
+// 食物类型：red红色 blue蓝色 colorful彩色 gray灰色
+const foodTypes = ['red','blue','colorful','gray'];
+
+// 摇杆相关参数
+let isDragging = false;
+const joystickRadius = 80;
+const thumbRadius = 25;
+
+// 速度衰减系数（越小速度越快）
+let speedFactor = 0;
+let gameRunTime = 0;
+let speedTimer = null;
 
 // 难度参数配置
 function getDifficultyConfig(){
@@ -149,7 +159,25 @@ function getDifficultyConfig(){
     }
 }
 
-// 生成食物（按概率分配类型）
+// 游戏运行计时，动态调整速度系数
+function startSpeedTimer(){
+    speedTimer = setInterval(()=>{
+        gameRunTime++;
+        if(difficulty === 'normal'){
+            // 每60秒+0.001
+            if(gameRunTime % 60 === 0){
+                speedFactor += 0.001;
+            }
+        }else if(difficulty === 'hard'){
+            // 每120秒+0.01
+            if(gameRunTime % 120 === 0){
+                speedFactor += 0.01;
+            }
+        }
+    },1000);
+}
+
+// 生成食物（按概率分配类型：红25%，蓝65%，灰8%，彩2%）
 function genFood(){
     let x,y;
     do{
@@ -160,13 +188,14 @@ function genFood(){
         aiSnake.some(p=>p.x===x&&p.y===y) ||
         worldProps.some(p=>p.x===x&&p.y===y)
     );
-    // 概率：红色25%，蓝色70%，彩色1%
     let r = Math.random() * 100;
     let type;
     if(r < 25){
         type = 'red';
-    }else if(r < 95){
+    }else if(r < 90){
         type = 'blue';
+    }else if(r < 98){
+        type = 'gray';
     }else{
         type = 'colorful';
     }
@@ -221,6 +250,7 @@ function collisionRandomEvent(){
     }else{
         clearInterval(timer);
         clearInterval(challengeTimer);
+        clearInterval(speedTimer);
         gameOver();
     }
 }
@@ -304,6 +334,7 @@ function playerMove(){
     if(head.x < 0||head.x>=maxGrid||head.y<0||head.y>=maxGrid){
         clearInterval(timer);
         clearInterval(challengeTimer);
+        clearInterval(speedTimer);
         gameOver();
         return;
     }
@@ -318,7 +349,7 @@ function playerMove(){
         score += add;
         scoreDom.innerText=score;
         let growNum = 0;
-        // 红色食物：长度×2
+        // 红色食物：长度+1
         if(food.type === 'red'){
             growNum = 1;
         }
@@ -326,7 +357,11 @@ function playerMove(){
         else if(food.type === 'blue'){
             growNum = 2;
         }
-        // 彩色食物：随机道具效果+长度×2
+        // 灰色食物：长度+3
+        else if(food.type === 'gray'){
+            growNum = 3;
+        }
+        // 彩色食物：随机道具效果+长度+1
         else if(food.type === 'colorful'){
             growNum = 1;
             let randProp = propTypes[Math.floor(Math.random()*propTypes.length)];
@@ -356,11 +391,20 @@ function playerMove(){
     }
 }
 
-// 炼狱击杀AI积分
+// 击杀AI蛇积分计算（按难度区分倍率）
 function killAiGetPoint(){
-    if(difficulty !== 'hell') return;
-    let add = (aiSnake.length + 1) * 2;
-    if(add > 40) add = add * 0.85;
+    let base = aiSnake.length + 1;
+    let mul = 1;
+    if(difficulty === 'normal'){
+        mul = 1;
+    }else if(difficulty === 'hard'){
+        mul = 1.5;
+    }else if(difficulty === 'hell'){
+        // 炼狱保留原有积分逻辑
+        base = (aiSnake.length + 1) * 2;
+        if(base > 40) base = base * 0.85;
+    }
+    let add = base * mul;
     if(doublePoint) add *=2;
     add = Math.floor(add);
     gamePoint += add;
@@ -373,7 +417,6 @@ function killAiGetPoint(){
 function draw(){
     // 炼狱模式切换雷电背景
     if(difficulty === 'hell'){
-        // 雷电背景渐变模拟
         let grad = ctx.createLinearGradient(0,0,400,400);
         grad.addColorStop(0,'#0a192f');
         grad.addColorStop(0.5,'#102a43');
@@ -400,6 +443,8 @@ function draw(){
         ctx.fillStyle='#ff5722';
     }else if(food.type === 'blue'){
         ctx.fillStyle='#0099ff';
+    }else if(food.type === 'gray'){
+        ctx.fillStyle='#888888';
     }else if(food.type === 'colorful'){
         ctx.fillStyle='#ff00ff';
     }
@@ -421,27 +466,58 @@ function updatePropUI(){
     doublePropDom.innerText = doublePoint ? '双倍积分:开启' : '双倍积分:关闭';
 }
 
-// 方向按键，无反向限制
-function setDir(d){
-    nextDir = d;
-}
+// 摇杆触摸控制
+thumb.addEventListener('touchstart',(e)=>{
+    e.preventDefault();
+    isDragging = true;
+})
+document.addEventListener('touchmove',(e)=>{
+    if(!isDragging) return;
+    e.preventDefault();
+    const rect = joystick.getBoundingClientRect();
+    const centerX = rect.left + rect.width/2;
+    const centerY = rect.top + rect.height/2;
+    const touchX = e.touches[0].clientX;
+    const touchY = e.touches[0].clientY;
+    let dx = touchX - centerX;
+    let dy = touchY - centerY;
+    const dist = Math.hypot(dx,dy);
+    // 限制摇杆范围
+    if(dist > joystickRadius - thumbRadius){
+        const scale = (joystickRadius - thumbRadius)/dist;
+        dx *= scale;
+        dy *= scale;
+    }
+    thumb.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+    // 判断方向
+    if(Math.abs(dx) > Math.abs(dy)){
+        nextDir = dx>0 ? 'right' : 'left';
+    }else{
+        nextDir = dy>0 ? 'down' : 'up';
+    }
+})
+document.addEventListener('touchend',()=>{
+    isDragging = false;
+    thumb.style.transform = 'translate(-50%,-50%)';
+})
 
-// 加速按键
-function speedBoost(){
+// 加速按钮按下：3秒加速15%
+speedBtn.addEventListener('touchstart',()=>{
+    if(speedBoosting) return;
     speedBoosting = true;
-}
-function speedDown(){
-    speedBoosting = false;
-}
+    setTimeout(()=>{
+        speedBoosting = false;
+    },3000);
+})
 
-// 键盘控制
+// 键盘控制备用
 document.addEventListener('keydown',e=>{
     switch(e.key){
         case 'ArrowUp': nextDir='up';break;
         case 'ArrowDown': nextDir='down';break;
         case 'ArrowLeft': nextDir='left';break;
         case 'ArrowRight': nextDir='right';break;
-        case ' ': if(difficulty==='hell') killAiGetPoint();break;
+        case ' ': killAiGetPoint();break;
     }
 })
 
@@ -493,6 +569,7 @@ function startChallengeCountdown(){
         if(challengeTime <=0){
             clearInterval(challengeTimer);
             clearInterval(timer);
+            clearInterval(speedTimer);
             if(gamePoint <50){
                 alert("挑战失败，积分未达到50，皮肤未解锁");
             }
@@ -504,8 +581,9 @@ function startChallengeCountdown(){
 // 游戏循环
 function gameLoop(){
     let cfg = getDifficultyConfig();
-    let speed = cfg.speed;
-    if(speedBoosting) speed *= 0.6;
+    let speed = cfg.speed * (1 - speedFactor);
+    // 加速时速度提升15%
+    if(speedBoosting) speed *= 0.85;
     playerMove();
     aiMove();
     draw();
@@ -516,11 +594,17 @@ function gameLoop(){
 function startGame(type){
     difficulty = type;
     isChallengeMode = false;
+    speedFactor = 0;
+    gameRunTime = 0;
+    clearInterval(speedTimer);
+    startSpeedTimer();
     countdownDom.style.display = 'none';
     mainMenu.style.display = 'none';
     gameInfo.style.display = 'block';
     gameCanvas.style.display = 'block';
-    controlPanel.style.display = 'flex';
+    joystick.style.display = 'block';
+    speedBtn.style.display = 'block';
+    propBar.style.display = 'flex';
     endMenu.style.display = 'none';
     resetGame();
     genFood();
@@ -532,12 +616,18 @@ function startChallenge(){
     difficulty = 'normal';
     isChallengeMode = true;
     challengeTime = 60;
+    speedFactor = 0;
+    gameRunTime = 0;
+    clearInterval(speedTimer);
+    startSpeedTimer();
     timeLeftDom.innerText = 60;
     countdownDom.style.display = 'block';
     mainMenu.style.display = 'none';
     gameInfo.style.display = 'block';
     gameCanvas.style.display = 'block';
-    controlPanel.style.display = 'flex';
+    joystick.style.display = 'block';
+    speedBtn.style.display = 'block';
+    propBar.style.display = 'flex';
     endMenu.style.display = 'none';
     resetGame();
     genFood();
@@ -569,8 +659,11 @@ function resetGame(){
 function gameOver(){
     clearTimeout(timer);
     clearInterval(challengeTimer);
+    clearInterval(speedTimer);
     gameCanvas.style.display = 'none';
-    controlPanel.style.display = 'none';
+    joystick.style.display = 'none';
+    speedBtn.style.display = 'none';
+    propBar.style.display = 'none';
     endMenu.style.display = 'block';
 }
 
@@ -587,10 +680,13 @@ function restartGame(){
 function backToMenu(){
     clearTimeout(timer);
     clearInterval(challengeTimer);
+    clearInterval(speedTimer);
     mainMenu.style.display = 'block';
     gameInfo.style.display = 'none';
     gameCanvas.style.display = 'none';
-    controlPanel.style.display = 'none';
+    joystick.style.display = 'none';
+    speedBtn.style.display = 'none';
+    propBar.style.display = 'none';
     endMenu.style.display = 'none';
 }
 </script>
