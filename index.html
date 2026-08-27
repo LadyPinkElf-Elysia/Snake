@@ -95,14 +95,23 @@ button{
 }
 .color-item.active{opacity:1;transform:scale(1.1);}
 
-/*商店弹窗*/
+/*商店弹窗-tab切换*/
 .shop-panel{
     display:none;position:fixed;top:50%;left:50%;
     transform:translate(-50%,-50%);
     background:#222;padding:24px;border-radius:14px;z-index:998;
-    min-width:320px;
+    min-width:340px;
     border:2px solid #9c27b0;
 }
+.tab-buttons{
+    display:flex;gap:10px;margin-bottom:15px;
+}
+.tab-btn{
+    padding:6px 14px;background:#444;border:none;color:#fff;border-radius:6px;cursor:pointer;
+}
+.tab-btn.active{background:#9c27b0;}
+.tab-content{display:none;}
+.tab-content.active{display:block;}
 .shop-item{
     text-align:left;padding:10px;margin:6px 0;background:#333;border-radius:8px;
 }
@@ -169,32 +178,46 @@ button{
     </div>
 </div>
 
-<!--商店弹窗-->
+<!--商店弹窗 道具/皮肤双标签-->
 <div class="shop-panel" id="shopPanel">
     <h3>🏪道具商店</h3>
-    <div class="shop-item">
-        <div>护盾（10积分）：5秒免疫碰撞</div>
-        <button onclick="buyProp('shield')">购买</button>
+    <div class="tab-buttons">
+        <button class="tab-btn active" onclick="switchTab('prop')">道具</button>
+        <button class="tab-btn" onclick="switchTab('skin')">皮肤</button>
     </div>
-    <div class="shop-item">
-        <div>幸运药水（15积分）：提升幸运概率</div>
-        <button onclick="buyProp('lucky')">购买</button>
+    <!--道具页-->
+    <div class="tab-content active" id="propTab">
+        <div class="shop-item">
+            <div>护盾（10积分）：5秒免疫碰撞伤害</div>
+            <button onclick="buyProp('shield')">购买</button>
+        </div>
+        <div class="shop-item">
+            <div>幸运药水（15积分）：提升幸运触发概率</div>
+            <button onclick="buyProp('lucky')">购买</button>
+        </div>
+        <div class="shop-item">
+            <div>双倍积分（15积分）：击杀AI获得双倍积分</div>
+            <button onclick="buyProp('double')">购买</button>
+        </div>
+        <div class="shop-item">
+            <div>小刀（20积分）：浑身尖刺，接触尖刺直接击杀AI蛇</div>
+            <button onclick="buyProp('knife')">购买</button>
+        </div>
+        <div class="shop-item">
+            <div>头盔（25积分）：撞击AI蛇身体直接击杀AI蛇</div>
+            <button onclick="buyProp('helmet')">购买</button>
+        </div>
     </div>
-    <div class="shop-item">
-        <div>小刀（20积分）：浑身尖刺，接触尖刺直接击杀AI蛇</div>
-        <button onclick="buyProp('knife')">购买</button>
-    </div>
-    <div class="shop-item">
-        <div>头盔（25积分）：撞击AI蛇身体直接击杀AI蛇</div>
-        <button onclick="buyProp('helmet')">购买</button>
-    </div>
-    <div class="shop-item">
-        <div>女仆爱丽丝皮肤（30积分）：解锁技能【清扫】</div>
-        <button onclick="buySkin()">购买皮肤</button>
-    </div>
-    <div class="shop-item">
-        <div>切换已解锁皮肤</div>
-        <button onclick="toggleSkin()">切换皮肤</button>
+    <!--皮肤页-->
+    <div class="tab-content" id="skinTab">
+        <div class="shop-item">
+            <div>女仆爱丽丝皮肤（30积分）：解锁专属清扫技能</div>
+            <button onclick="buySkin()">购买</button>
+        </div>
+        <div class="shop-item">
+            <div>切换女仆皮肤启用状态</div>
+            <button onclick="toggleSkin()">切换皮肤</button>
+        </div>
     </div>
     <button class="shop-close" onclick="closeShop()">关闭商店</button>
 </div>
@@ -273,6 +296,19 @@ const deathPanel = document.getElementById('deathPanel');
 const shopPanel = document.getElementById('shopPanel');
 const luckyRoomTip = document.getElementById('luckyRoomTip');
 const luckyRoomCdDom = document.getElementById('luckyRoomCd');
+
+//标签切换函数
+function switchTab(type){
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+    if(type==='prop'){
+        document.querySelector('.tab-btn:nth-child(1)').classList.add('active');
+        document.getElementById('propTab').classList.add('active');
+    }else{
+        document.querySelector('.tab-btn:nth-child(2)').classList.add('active');
+        document.getElementById('skinTab').classList.add('active');
+    }
+}
 
 //女仆立绘
 const maidArisImg = new Image();
@@ -796,6 +832,8 @@ function buyProp(type){
         gamePoint-=10;shieldTime=5;pointDom.innerText=gamePoint;gamePointDom.innerText=gamePoint;updatePropUI();alert("护盾已激活");
     }else if(type==='lucky'&&gamePoint>=15){
         gamePoint-=15;luckyBuff=true;pointDom.innerText=gamePoint;gamePointDom.innerText=gamePoint;alert("幸运药水生效");
+    }else if(type==='double'&&gamePoint>=15){
+        gamePoint-=15;doublePoint=true;setTimeout(()=>{doublePoint=false;updatePropUI();},5000);pointDom.innerText=gamePoint;gamePointDom.innerText=gamePoint;updatePropUI();alert("双倍积分开启5秒");
     }else if(type==='knife'&&gamePoint>=20){
         gamePoint-=20;knifeActive=true;pointDom.innerText=gamePoint;gamePointDom.innerText=gamePoint;updatePropUI();alert("小刀已装备，尖刺生效");
     }else if(type==='helmet'&&gamePoint>=25){
