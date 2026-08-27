@@ -3,13 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>蔚蓝档案贪吃蛇 横屏版</title>
+<title>蔚蓝档案贪吃蛇</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;touch-action:manipulation}
-html,body{
-    width:100%;
-    height:100%;
-}
+html,body{width:100%;height:100%;}
 body{
     background:#2b2b2b;
     color:#fff;
@@ -17,35 +14,20 @@ body{
     font-family:微软雅黑;
     overflow:hidden;
 }
-
 #game{
     border:2px solid #4CAF50;
     background:#000;
-    width:70vh;
-    height:70vh;
-    max-width:90vw;
-    max-height:70vh;
+    width:56vh;
+    height:56vh;
+    max-width:75vw;
+    max-height:75vh;
 }
-
-.info{
-    margin-bottom:8px;
-    font-size:16px;
-}
-
-.menu{
-    margin:15px 0;
-}
-
+.info{margin-bottom:8px;font-size:16px;}
+.menu{margin:15px 0;}
 button{
-    padding:8px 16px;
-    margin:4px;
-    font-size:16px;
-    border:none;
-    border-radius:8px;
-    cursor:pointer;
-    touch-action:manipulation;
+    padding:8px 16px;margin:4px;font-size:16px;
+    border:none;border-radius:8px;cursor:pointer;touch-action:manipulation;
 }
-
 .normal{background:#4CAF50;color:white}
 .hard{background:#ff9800;color:white}
 .hell{background:#f44336;color:white}
@@ -53,7 +35,6 @@ button{
 .challenge{background:#00bcd4;color:white}
 .restart{background:#2196F3}
 .back{background:#9e9e9e}
-.shop{background:#9c27b0;color:white;margin-top:8px}
 .prop{background:#673ab7;margin:3px}
 .skin-btn{background:#e91e63;color:white;margin:5px}
 
@@ -62,150 +43,67 @@ button{
     flex-direction:column;
     justify-content:center;
     align-items:center;
-    gap:12px;
-    height:calc(100vh - 130px);
+    gap:10px;
+    height:calc(100vh - 150px);
+    transform:scale(0.92);
+    transform-origin:center center;
 }
-
 .bottom-control-panel{
+    position:absolute;
+    left:50%;
+    bottom:18px;
+    transform:translateX(-50%);
     display:flex;
     justify-content:center;
     align-items:center;
-    gap:30px;
-    padding-bottom:16px;
+    gap:24px;
 }
-
-.joystick-area{
-    position:relative;
-    width:150px;
-    height:150px;
-}
-
+.joystick-area{position:relative;width:130px;height:130px;}
 .joystick-bg{
-    width:150px;
-    height:150px;
-    border-radius:50%;
-    background:#333;
-    border:2px solid #555;
+    width:130px;height:130px;border-radius:50%;
+    background:#333;border:2px solid #555;
 }
-
 .joystick-thumb{
-    width:48px;
-    height:48px;
-    border-radius:50%;
+    width:42px;height:42px;border-radius:50%;
     background:#00bcd4;
-    position:absolute;
-    left:50%;
-    top:50%;
-    transform:translate(-50%,-50%);
-    touch-action:none;
+    position:absolute;left:50%;top:50%;
+    transform:translate(-50%,-50%);touch-action:none;
 }
-
 .speed-btn{
-    width:64px;
-    height:64px;
-    background:#ff5722;
-    color:white;
-    border-radius:10px;
-    font-size:14px;
-    border:none;
+    width:56px;height:56px;background:#ff5722;color:white;
+    border-radius:10px;font-size:13px;border:none;
 }
-
-.prop-bar{
-    display:flex;
-    gap:6px;
-    justify-content:center;
-}
-
-.prop-item{
-    padding:6px 10px;
-    background:#444;
-    border-radius:6px;
-    font-size:14px;
-}
-
-.color-select{
-    margin:10px 0;
-    display:flex;
-    gap:10px;
-    justify-content:center;
-    flex-wrap:wrap;
-}
-
+.prop-bar{display:flex;gap:6px;justify-content:center;}
+.prop-item{padding:6px 10px;background:#444;border-radius:6px;font-size:14px;}
+.color-select{margin:10px 0;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;}
 .color-item{
-    width:28px;
-    height:28px;
-    border-radius:50%;
-    cursor:pointer;
-    border:2px solid #fff;
-    opacity:0.7;
+    width:28px;height:28px;border-radius:50%;cursor:pointer;
+    border:2px solid #fff;opacity:0.7;
 }
-
-.color-item.active{
-    opacity:1;
-    transform:scale(1.1);
-}
-
+.color-item.active{opacity:1;transform:scale(1.1);}
 .skin-panel{
-    display:none;
-    position:fixed;
-    top:50%;
-    left:50%;
+    display:none;position:fixed;top:50%;left:50%;
     transform:translate(-50%,-50%);
-    background:#333;
-    padding:20px;
-    border-radius:12px;
-    z-index:999;
+    background:#333;padding:20px;border-radius:12px;z-index:999;
 }
-
-.countdown{
-    font-size:22px;
-    color:#ffeb3b;
-    font-weight:bold;
-    margin:10px 0;
-}
-
+.countdown{font-size:22px;color:#ffeb3b;font-weight:bold;margin:10px 0;}
 .death-panel{
-    display:none;
-    position:fixed;
-    top:50%;
-    left:50%;
+    display:none;position:fixed;top:50%;left:50%;
     transform:translate(-50%,-50%);
-    background:#1a1a1a;
-    padding:25px;
-    border-radius:12px;
-    z-index:1000;
-    border:2px solid #f44336;
+    background:#1a1a1a;padding:25px;border-radius:12px;
+    z-index:1000;border:2px solid #f44336;
 }
-
-.death-title{
-    font-size:24px;
-    color:#f44336;
-    margin-bottom:20px;
-    font-weight:bold;
-}
-
-.death-btn-group{
-    display:flex;
-    gap:20px;
-    justify-content:center;
-}
-
-.menu#endMenu{
-    position:fixed;
-    top:50%;
-    left:50%;
+.death-title{font-size:24px;color:#f44336;margin-bottom:20px;font-weight:bold;}
+.death-btn-group{display:flex;gap:20px;justify-content:center;}
+#endMenu{
+    position:fixed;top:50%;left:50%;
     transform:translate(-50%,-50%);
-    background:#1a1a1a;
-    padding:25px;
-    border-radius:12px;
-    border:2px solid #2196F3;
-    z-index:1000;
-    display:none;
+    background:#1a1a1a;padding:25px;border-radius:12px;
+    border:2px solid #2196F3;z-index:1000;display:none;
 }
 </style>
 </head>
 <body>
-
 <div class="menu" id="mainMenu">
     <h2>选择难度</h2>
     <button class="normal" onclick="startGame('normal')">普通</button>
@@ -219,12 +117,13 @@ button{
         <button class="prop" onclick="buyProp('shield')">护盾（10积分）：5秒免疫碰撞</button>
         <button class="prop" onclick="buyProp('lucky')">幸运药水（15积分）：提升幸运概率</button>
         <button class="skin-btn" onclick="buySkin()">女仆爱丽丝皮肤（30积分）</button>
+        <button class="skin-btn" onclick="toggleSkin()">切换使用已解锁皮肤</button>
         <p>当前积分：<span id="point">0</span></p>
-        <p id="skinStatus">皮肤状态：未解锁</p>
+        <p id="skinStatus">皮肤状态：未解锁｜未启用</p>
     </div>
 
     <div>
-        <h3>选择蛇身颜色（不可选紫色）</h3>
+        <h3>选择蛇身颜色</h3>
         <div class="color-select" id="colorSelect">
             <div class="color-item active" style="background:#4CAF50" data-color="#4CAF50" onclick="selectColor('#4CAF50')"></div>
             <div class="color-item" style="background:#ff5722" data-color="#ff5722" onclick="selectColor('#ff5722')"></div>
@@ -259,7 +158,7 @@ button{
     <button class="speed-btn" id="speedBtn">加速</button>
 </div>
 
-<div class="menu" id="endMenu">
+<div id="endMenu">
     <h3>游戏结束</h3>
     <button class="restart" onclick="restartGame()">重新开始</button>
     <button class="back" onclick="backToMenu()">回到主界面</button>
@@ -287,7 +186,6 @@ const pointDom = document.getElementById('point');
 const gamePointDom = document.getElementById('gamePoint');
 const mainMenu = document.getElementById('mainMenu');
 const gameInfo = document.getElementById('gameInfo');
-const gameCanvas = document.getElementById('game');
 const gameLayout = document.getElementById('gameLayout');
 const bottomControl = document.getElementById('bottomControl');
 const endMenu = document.getElementById('endMenu');
@@ -301,7 +199,6 @@ const timeLeftDom = document.getElementById('timeLeft');
 const skinStatusDom = document.getElementById('skinStatus');
 const skinUnlockPanel = document.getElementById('skinUnlockPanel');
 const deathPanel = document.getElementById('deathPanel');
-const colorSelect = document.getElementById('colorSelect');
 
 const size = 20;
 const maxGrid = 20;
@@ -319,8 +216,9 @@ let difficulty = '';
 let isChallengeMode = false;
 let challengeTime = 60;
 let challengeTimer = null;
+
 let skinUnlocked = false;
-let currentSkin = 'default';
+let useMaidSkin = false;
 let playerColor = '#4CAF50';
 
 let shieldTime = 0;
@@ -332,8 +230,8 @@ const propTypes = ['shield','speed','double'];
 const foodTypes = ['red','blue','colorful','gray'];
 
 let isDragging = false;
-const joystickRadius = 75;
-const thumbRadius = 24;
+const joystickRadius = 65;
+const thumbRadius = 21;
 
 let speedFactor = 0;
 let gameRunTime = 0;
@@ -341,23 +239,28 @@ let speedTimer = null;
 
 function selectColor(color){
     playerColor = color;
-    document.querySelectorAll('.color-item').forEach(item=>{
-        item.classList.remove('active');
-    });
+    document.querySelectorAll('.color-item').forEach(item=>item.classList.remove('active'));
     document.querySelector(`[data-color="${color}"]`).classList.add('active');
+}
+
+function toggleSkin(){
+    if(!skinUnlocked){
+        alert("尚未解锁女仆爱丽丝皮肤，需要30积分购买");
+        return;
+    }
+    useMaidSkin = !useMaidSkin;
+    skinStatusDom.innerText = skinUnlocked
+        ? `皮肤状态：已解锁｜${useMaidSkin?"已启用女仆皮肤":"未启用"}`
+        : "皮肤状态：未解锁｜未启用";
 }
 
 function getDifficultyConfig(){
     let baseSpeed = 220;
     switch(difficulty){
-        case 'normal':
-            return {speed: baseSpeed * 1.5, aiAttack: false};
-        case 'hard':
-            return {speed: baseSpeed * 1.25, aiAttack: false};
-        case 'hell':
-            return {speed: baseSpeed * 0.75, aiAttack: true};
-        case 'peace':
-            return {speed: baseSpeed * 1.5, aiAttack: false, noDeathHeadHit:true};
+        case 'normal': return {speed: baseSpeed * 1.5, aiAttack: false};
+        case 'hard': return {speed: baseSpeed * 1.25, aiAttack: false};
+        case 'hell': return {speed: baseSpeed * 0.75, aiAttack: true};
+        case 'peace': return {speed: baseSpeed * 1.5, aiAttack: false, noDeathHeadHit:true};
     }
 }
 
@@ -365,13 +268,9 @@ function startSpeedTimer(){
     speedTimer = setInterval(()=>{
         gameRunTime++;
         if(difficulty === 'normal' || difficulty === 'peace'){
-            if(gameRunTime % 60 === 0){
-                speedFactor += 0.001;
-            }
+            if(gameRunTime % 60 === 0) speedFactor += 0.001;
         }else if(difficulty === 'hard'){
-            if(gameRunTime % 120 === 0){
-                speedFactor += 0.01;
-            }
+            if(gameRunTime % 120 === 0) speedFactor += 0.01;
         }
     },1000);
 }
@@ -427,8 +326,6 @@ function headCollision(){
     let r = Math.random();
     if(r < 0.5){
         clearInterval(timer);clearInterval(challengeTimer);clearInterval(speedTimer);
-        gameCanvas.style.display='none';
-        bottomControl.style.display='none';
         deathPanel.style.display='block';
     }else{
         aiHitPlayerBody();
@@ -454,8 +351,6 @@ function collisionRandomEvent(){
     else if(r < safeRate+halfRate+headRate) playerSnake = [playerSnake[0]];
     else{
         clearInterval(timer);clearInterval(challengeTimer);clearInterval(speedTimer);
-        gameCanvas.style.display='none';
-        bottomControl.style.display='none';
         deathPanel.style.display='block';
     }
 }
@@ -512,7 +407,11 @@ function aiMove(){
     if(head.x<0) head.x=maxGrid-1;if(head.x>=maxGrid) head.x=0;
     if(head.y<0) head.y=maxGrid-1;if(head.y>=maxGrid) head.y=0;
     aiSnake.unshift(head);
-    if(head.x===food.x&&head.y===food.y){genFood();genWorldProp();}else aiSnake.pop();
+    if(head.x===food.x&&head.y===food.y){
+        genFood();genWorldProp();
+    }else{
+        aiSnake.pop();
+    }
 }
 
 function playerMove(){
@@ -522,11 +421,8 @@ function playerMove(){
         case 'up':head.y--;break;case 'down':head.y++;break;
         case 'left':head.x--;break;case 'right':head.x++;break;
     }
-    //全部模式撞墙直接死亡，和平模式不再穿墙
     if(head.x<0||head.x>=maxGrid||head.y<0||head.y>=maxGrid){
         clearInterval(timer);clearInterval(challengeTimer);clearInterval(speedTimer);
-        gameCanvas.style.display='none';
-        bottomControl.style.display='none';
         deathPanel.style.display='block';
         return;
     }
@@ -551,7 +447,7 @@ function playerMove(){
         for(let i=0;i<growNum;i++) playerSnake.push(playerSnake.at(-1));
         updatePropUI();genFood();genWorldProp();
         if(isChallengeMode&&gamePoint>=50&&!skinUnlocked){
-            skinUnlocked=true;currentSkin='maid';skinStatusDom.innerText="皮肤状态：已解锁（女仆爱丽丝）";
+            skinUnlocked=true;skinStatusDom.innerText="皮肤状态：已解锁｜未启用";
             skinUnlockPanel.style.display='block';
         }
     }else playerSnake.pop();
@@ -567,6 +463,7 @@ function killAiGetPoint(){
 }
 
 function draw(){
+    const cfg = getDifficultyConfig();
     if(difficulty==='hell'){
         let grad = ctx.createLinearGradient(0,0,400,400);
         grad.addColorStop(0,'#0a192f');grad.addColorStop(0.5,'#102a43');grad.addColorStop(1,'#000');
@@ -574,13 +471,34 @@ function draw(){
     }else ctx.fillStyle='#000';
     ctx.fillRect(0,0,400,400);
 
-    if(currentSkin === 'maid') ctx.fillStyle='#00e5ff';
-    else ctx.fillStyle = playerColor;
-    playerSnake.forEach(p=>ctx.fillRect(p.x*size,p.y*size,size-1,size-1));
+    // 绘制玩家蛇
+    for(let i=0;i<playerSnake.length;i++){
+        const seg = playerSnake[i];
+        const px = seg.x * size;
+        const py = seg.y * size;
+        if(i===0 && useMaidSkin){
+            // 蛇头：缩小角色方块，身体从下方长出蓝色尾巴
+            ctx.fillStyle="#ffffff";
+            ctx.fillRect(px+3,py+2,14,12);
+            ctx.fillStyle="#00e5ff";
+            ctx.fillRect(px+5,py+14,10,4);
+        }else{
+            if(useMaidSkin){
+                // 蓝色渐变尾巴
+                let alpha = Math.max(0.25, 1 - i*0.045);
+                ctx.fillStyle = `rgba(0, 229, 255, ${alpha})`;
+            }else{
+                ctx.fillStyle = playerColor;
+            }
+            ctx.fillRect(px,py,size-1,size-1);
+        }
+    }
 
+    // AI蛇
     ctx.fillStyle='#c044ff';
     aiSnake.forEach(p=>ctx.fillRect(p.x*size,p.y*size,size-1,size-1));
 
+    //食物
     if(food.type==='red') ctx.fillStyle='#ff5722';
     else if(food.type==='blue') ctx.fillStyle='#0099ff';
     else if(food.type==='gray') ctx.fillStyle='#888888';
@@ -635,14 +553,16 @@ function buyProp(type){
     if(type==='shield'&&gamePoint>=10){
         gamePoint-=10;shieldTime=5;pointDom.innerText=gamePoint;gamePointDom.innerText=gamePoint;updatePropUI();alert("护盾已激活");
     }else if(type==='lucky'&&gamePoint>=15){
-        gamePoint-=15;luckyBuff=true;pointDom.innerText=gamePoint;gamePointDom.innerText=gamePoint;updatePropUI();alert("幸运药水生效");
+        gamePoint-=15;luckyBuff=true;pointDom.innerText=gamePoint;gamePointDom.innerText=gamePoint;alert("幸运药水生效");
     }else alert("积分不足");
 }
 
 function buySkin(){
     if(gamePoint>=30){
-        gamePoint-=30;skinUnlocked=true;currentSkin='maid';pointDom.innerText=gamePoint;gamePointDom.innerText=gamePoint;
-        skinStatusDom.innerText="皮肤状态：已解锁（女仆爱丽丝）";alert("购买成功");
+        gamePoint-=30;skinUnlocked=true;useMaidSkin=true;
+        pointDom.innerText=gamePoint;gamePointDom.innerText=gamePoint;
+        skinStatusDom.innerText="皮肤状态：已解锁｜已启用女仆皮肤";
+        alert("购买成功，已自动启用女仆爱丽丝皮肤");
     }else alert("积分不足，需要30积分");
 }
 
@@ -660,21 +580,24 @@ function startChallengeCountdown(){
 
 function gameLoop(){
     let cfg=getDifficultyConfig();
-    let speed=cfg.speed*(1-speedFactor);
-    if(speedBoosting)speed*=0.85;
-    playerMove();aiMove();draw();
-    timer=setTimeout(gameLoop,speed);
+    // 加速只作用玩家，AI速度不受speedBoosting影响
+    let playerSpeed = cfg.speed*(1-speedFactor);
+    if(speedBoosting) playerSpeed *= 0.85;
+
+    playerMove();
+    aiMove();
+    draw();
+    timer=setTimeout(gameLoop, playerSpeed);
 }
 
 function startGame(type){
     difficulty=type;isChallengeMode=false;
     speedFactor=0;gameRunTime=0;clearInterval(speedTimer);startSpeedTimer();
     countdownDom.style.display='none';mainMenu.style.display='none';gameInfo.style.display='block';
-    gameLayout.style.display='flex';gameCanvas.style.display='block';
+    gameLayout.style.display='flex';
     bottomControl.style.display='flex';
     endMenu.style.display='none';deathPanel.style.display='none';
-    resetGame();genFood();
-    draw();//打开立刻渲染画面，消除黑屏
+    resetGame();genFood();draw();
     gameLoop();
 }
 
@@ -683,26 +606,24 @@ function startChallenge(){
     speedFactor=0;gameRunTime=0;clearInterval(speedTimer);startSpeedTimer();
     timeLeftDom.innerText=60;countdownDom.style.display='block';
     mainMenu.style.display='none';gameInfo.style.display='block';gameLayout.style.display='flex';
-    gameCanvas.style.display='block';
     bottomControl.style.display='flex';
     endMenu.style.display='none';deathPanel.style.display='none';
-    resetGame();genFood();startChallengeCountdown();
-    draw();
+    resetGame();genFood();startChallengeCountdown();draw();
     gameLoop();
 }
 
 function resetGame(){
     playerSnake=[{x:10,y:10}];aiSnake=[{x:3,y:3}];
     dir='right';nextDir='right';aiDir='right';
-    score=0;gamePoint=0;shieldTime=0;luckyBuff=false;speedBoosting=false;doublePoint=false;worldProps=[];
-    scoreDom.innerText=0;gamePointDom.innerText=0;pointDom.innerText=0;updatePropUI();
+    score=0;shieldTime=0;luckyBuff=false;speedBoosting=false;doublePoint=false;worldProps=[];
+    scoreDom.innerText=0;updatePropUI();
 }
 
 function gameOver(){
     clearTimeout(timer);clearInterval(challengeTimer);clearInterval(speedTimer);
-    gameCanvas.style.display='none';
+    gameLayout.style.display='none';
     bottomControl.style.display='none';
-    gameLayout.style.display='none';endMenu.style.display='block';
+    endMenu.style.display='block';
 }
 
 function restartGame(){
@@ -715,7 +636,7 @@ function restartGame(){
 function backToMenu(){
     deathPanel.style.display='none';
     clearTimeout(timer);clearInterval(challengeTimer);clearInterval(speedTimer);
-    gameLayout.style.display='none';gameCanvas.style.display='none';
+    gameLayout.style.display='none';
     bottomControl.style.display='none';
     mainMenu.style.display='block';gameInfo.style.display='none';endMenu.style.display='none';
 }
