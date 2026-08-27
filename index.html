@@ -326,18 +326,17 @@ let gamePoint = 0;
 let aiSnake = [{x:3,y:3}];
 let aiDir = 'right';
 let food = {};
-let timer;
+let timer = null;
 let difficulty = '';
 let isChallengeMode = false;
 let challengeTime = 60;
 let challengeTimer = null;
-let gameIsDead = false; //死亡标记，修复空格BUG
+let gameIsDead = false;
 
 let skinUnlocked = false;
 let useMaidSkin = false;
 let playerColor = '#4CAF50';
 
-//清扫技能
 const SWEEP_COOLDOWN = 120;
 let sweepCd = 0;
 let sweepTimer = null;
@@ -350,11 +349,9 @@ let worldProps = [];
 const propTypes = ['shield','speed','double'];
 const foodTypes = ['red','blue','colorful','gray'];
 
-//新增小刀、头盔
 let knifeActive = false;
 let helmetActive = false;
 
-//幸运房间
 let luckyRoomActive = false;
 let luckyRoomCountdown = 20;
 let luckyRoomTimer = null;
@@ -433,10 +430,12 @@ function getDifficultyConfig(){
         case 'hard': return {speed: baseSpeed * 1.25, aiAttack: false,luckyTrigger:75,luckyBonus:25};
         case 'hell': return {speed: baseSpeed * 0.75, aiAttack: true,luckyTrigger:120,luckyBonus:45};
         case 'peace': return {speed: baseSpeed * 1.5, aiAttack: false, noDeathHeadHit:true,luckyTrigger:-1,luckyBonus:0};
+        default: return {speed: baseSpeed * 1.5, aiAttack: false,luckyTrigger:60,luckyBonus:20};
     }
 }
 
 function startSpeedTimer(){
+    if(speedTimer) clearInterval(speedTimer);
     speedTimer = setInterval(()=>{
         gameRunTime++;
         gameRunningSeconds++;
@@ -452,7 +451,6 @@ function startSpeedTimer(){
     },1000);
 }
 
-//幸运房间开启
 function openLuckyRoom(){
     luckyRoomActive = true;
     luckyRoomCountdown = 20;
@@ -470,7 +468,7 @@ function openLuckyRoom(){
 function closeLuckyRoom(){
     luckyRoomActive = false;
     luckyRoomTip.style.display = "none";
-    clearInterval(luckyRoomTimer);
+    if(luckyRoomTimer) clearInterval(luckyRoomTimer);
 }
 
 function genFood(){
@@ -541,7 +539,6 @@ function killAiBySpike(){
 function headCollision(){
     const cfg = getDifficultyConfig();
     if(cfg.noDeathHeadHit) return;
-    //头盔效果：头撞ai身体直接杀死ai蛇
     if(helmetActive){
         killAiBySpike();
         return;
@@ -556,8 +553,11 @@ function headCollision(){
 
 function triggerDeath(){
     gameIsDead = true;
-    clearInterval(timer);clearInterval(challengeTimer);clearInterval(speedTimer);
-    clearInterval(sweepTimer);clearInterval(luckyRoomTimer);
+    if(timer) clearTimeout(timer);
+    if(challengeTimer) clearInterval(challengeTimer);
+    if(speedTimer) clearInterval(speedTimer);
+    if(sweepTimer) clearInterval(sweepTimer);
+    if(luckyRoomTimer) clearInterval(luckyRoomTimer);
     deathPanel.style.display='block';
 }
 
@@ -583,7 +583,6 @@ function collisionRandomEvent(){
     }
 }
 
-//小刀尖刺检测：玩家身体向外1格，AI碰到尖刺直接死亡
 function checkKnifeSpikeHit(){
     if(!knifeActive) return;
     const spikeOffset = [{x:-1,y:0},{x:1,y:0},{x:0:-1},{x:0:1}];
@@ -612,7 +611,6 @@ function checkKnifeSpikeHit(){
 function checkAiCollision(){
     let pHead = playerSnake[0];
     let aHead = aiSnake[0];
-    //小刀尖刺
     checkKnifeSpikeHit();
 
     if(pHead.x === aHead.x && pHead.y === aHead.y){
@@ -621,7 +619,6 @@ function checkAiCollision(){
     }
     let hitBody = playerSnake.slice(1).some(p=>p.x===aHead.x&&p.y===aHead.y);
     if(hitBody){
-        //头盔撞击ai身体
         if(helmetActive){
             killAiBySpike();
             return true;
@@ -716,7 +713,7 @@ function playerMove(){
 }
 
 function killAiGetPoint(){
-    if(gameIsDead) return; //死亡禁止空格拿分BUG修复
+    if(gameIsDead) return;
     let base = aiSnake.length+1;let mul=1;
     if(difficulty==='hard') mul=1.5;
     if(difficulty==='hell'){base=(aiSnake.length+1)*2;if(base>40)base*=0.85;}
@@ -734,7 +731,6 @@ function draw(){
     }else ctx.fillStyle='#000';
     ctx.fillRect(0,0,400,400);
 
-    //绘制小刀尖刺
     if(knifeActive){
         ctx.fillStyle="#ff2222";
         const offs = [{x:-1,y:0},{x:1,y:0},{x:0:-1},{x:0:1}];
@@ -748,7 +744,6 @@ function draw(){
         })
     }
 
-    //玩家蛇
     for(let i=0;i<playerSnake.length;i++){
         const seg = playerSnake[i];
         const px = seg.x * size;
@@ -761,11 +756,9 @@ function draw(){
         }
     }
 
-    //AI蛇
     ctx.fillStyle='#c044ff';
     aiSnake.forEach(p=>ctx.fillRect(p.x*size,p.y*size,size-1,size-1));
 
-    //食物
     if(food.type==='red') ctx.fillStyle='#ff5722';
     else if(food.type==='blue') ctx.fillStyle='#0099ff';
     else if(food.type==='gray') ctx.fillStyle='#888888';
@@ -854,12 +847,16 @@ function buySkin(){
 function closeSkinPanel(){skinUnlockPanel.style.display='none';}
 
 function startChallengeCountdown(){
+    if(challengeTimer) clearInterval(challengeTimer);
     challengeTimer=setInterval(()=>{
         challengeTime--;timeLeftDom.innerText=challengeTime;
         if(challengeTime<=0){
-            clearInterval(challengeTimer);clearInterval(timer);clearInterval(speedTimer);
-            clearInterval(sweepTimer);clearInterval(luckyRoomTimer);
-            if(gamePoint<50)alert("挑战失败");gameOver();
+            clearInterval(challengeTimer);
+            if(timer) clearTimeout(timer);
+            if(speedTimer) clearInterval(speedTimer);
+            if(sweepTimer) clearInterval(sweepTimer);
+            if(luckyRoomTimer) clearInterval(luckyRoomTimer);
+            gameOver();
         }
     },1000);
 }
@@ -872,7 +869,7 @@ function gameLoop(){
     playerMove();
     aiMove();
     draw();
-    timer=setTimeout(gameLoop, playerSpeed);
+    timer = setTimeout(gameLoop, playerSpeed);
 }
 
 function startGame(type){
@@ -880,12 +877,17 @@ function startGame(type){
     speedFactor=0;gameRunTime=0;gameRunningSeconds=0;
     gameIsDead=false;
     closeLuckyRoom();
-    clearInterval(speedTimer);startSpeedTimer();
-    countdownDom.style.display='none';mainMenu.style.display='none';gameInfo.style.display='block';
+    startSpeedTimer();
+    countdownDom.style.display='none';
+    mainMenu.style.display='none';
+    gameInfo.style.display='block';
     gameLayout.style.display='flex';
     bottomControl.style.display='flex';
-    endMenu.style.display='none';deathPanel.style.display='none';
-    resetGame();genFood();draw();
+    endMenu.style.display='none';
+    deathPanel.style.display='none';
+    resetGame();
+    genFood();
+    draw();
     gameLoop();
 }
 
@@ -894,12 +896,19 @@ function startChallenge(){
     speedFactor=0;gameRunTime=0;gameRunningSeconds=0;
     gameIsDead=false;
     closeLuckyRoom();
-    clearInterval(speedTimer);startSpeedTimer();
-    timeLeftDom.innerText=60;countdownDom.style.display='block';
-    mainMenu.style.display='none';gameInfo.style.display='block';gameLayout.style.display='flex';
+    startSpeedTimer();
+    timeLeftDom.innerText=60;
+    countdownDom.style.display='block';
+    mainMenu.style.display='none';
+    gameInfo.style.display='block';
+    gameLayout.style.display='flex';
     bottomControl.style.display='flex';
-    endMenu.style.display='none';deathPanel.style.display='none';
-    resetGame();genFood();startChallengeCountdown();draw();
+    endMenu.style.display='none';
+    deathPanel.style.display='none';
+    resetGame();
+    genFood();
+    startChallengeCountdown();
+    draw();
     gameLoop();
 }
 
@@ -908,13 +917,19 @@ function resetGame(){
     dir='right';nextDir='right';aiDir='right';
     score=0;shieldTime=0;luckyBuff=false;speedBoosting=false;doublePoint=false;worldProps=[];
     knifeActive=false;helmetActive=false;
-    sweepCd=0;clearInterval(sweepTimer);
-    scoreDom.innerText=0;updatePropUI();updateSweepUI();
+    sweepCd=0;
+    if(sweepTimer) clearInterval(sweepTimer);
+    scoreDom.innerText=0;
+    updatePropUI();
+    updateSweepUI();
 }
 
 function gameOver(){
-    clearTimeout(timer);clearInterval(challengeTimer);clearInterval(speedTimer);
-    clearInterval(sweepTimer);clearInterval(luckyRoomTimer);
+    if(timer) clearTimeout(timer);
+    if(challengeTimer) clearInterval(challengeTimer);
+    if(speedTimer) clearInterval(speedTimer);
+    if(sweepTimer) clearInterval(sweepTimer);
+    if(luckyRoomTimer) clearInterval(luckyRoomTimer);
     gameLayout.style.display='none';
     bottomControl.style.display='none';
     endMenu.style.display='block';
@@ -925,19 +940,23 @@ function restartGame(){
     speedFactor=0;gameRunTime=0;gameRunningSeconds=0;
     gameIsDead=false;
     closeLuckyRoom();
-    clearInterval(speedTimer);
     if(isChallengeMode) startChallenge();
     else startGame(difficulty);
 }
 
 function backToMenu(){
     deathPanel.style.display='none';
-    clearTimeout(timer);clearInterval(challengeTimer);clearInterval(speedTimer);
-    clearInterval(sweepTimer);clearInterval(luckyRoomTimer);
+    if(timer) clearTimeout(timer);
+    if(challengeTimer) clearInterval(challengeTimer);
+    if(speedTimer) clearInterval(speedTimer);
+    if(sweepTimer) clearInterval(sweepTimer);
+    if(luckyRoomTimer) clearInterval(luckyRoomTimer);
     closeLuckyRoom();
     gameLayout.style.display='none';
     bottomControl.style.display='none';
-    mainMenu.style.display='block';gameInfo.style.display='none';endMenu.style.display='none';
+    mainMenu.style.display='block';
+    gameInfo.style.display='none';
+    endMenu.style.display='none';
 }
 
 updateSweepUI();
