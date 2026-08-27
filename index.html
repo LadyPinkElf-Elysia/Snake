@@ -73,6 +73,20 @@ button{
     width:56px;height:56px;background:#ff5722;color:white;
     border-radius:10px;font-size:13px;border:none;
 }
+/*清扫技能按钮*/
+.sweep-btn{
+    width:56px;height:56px;background:#03A9F4;color:white;
+    border-radius:10px;font-size:12px;border:none;
+}
+.sweep-btn:disabled{
+    background:#444;color:#888;cursor:not-allowed;
+}
+.btn-column{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+}
+
 .prop-bar{display:flex;gap:6px;justify-content:center;}
 .prop-item{padding:6px 10px;background:#444;border-radius:6px;font-size:14px;}
 .color-select{margin:10px 0;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;}
@@ -155,7 +169,10 @@ button{
         <div class="joystick-bg"></div>
         <div class="joystick-thumb" id="thumb"></div>
     </div>
-    <button class="speed-btn" id="speedBtn">加速</button>
+    <div class="btn-column">
+        <button class="sweep-btn" id="sweepBtn" disabled>清扫<br>就绪</button>
+        <button class="speed-btn" id="speedBtn">加速</button>
+    </div>
 </div>
 
 <div id="endMenu">
@@ -174,7 +191,7 @@ button{
 
 <div class="skin-panel" id="skinUnlockPanel">
     <h3>恭喜！挑战成功</h3>
-    <p>已解锁女仆爱丽丝皮肤</p>
+    <p>已解锁女仆爱丽丝皮肤，解锁专属技能【清扫】</p>
     <button onclick="closeSkinPanel()">确定</button>
 </div>
 
@@ -192,6 +209,7 @@ const endMenu = document.getElementById('endMenu');
 const joystick = document.getElementById('joystick');
 const thumb = document.getElementById('thumb');
 const speedBtn = document.getElementById('speedBtn');
+const sweepBtn = document.getElementById('sweepBtn');
 const shieldPropDom = document.getElementById('shieldProp');
 const doublePropDom = document.getElementById('doubleProp');
 const countdownDom = document.getElementById('countdown');
@@ -199,6 +217,11 @@ const timeLeftDom = document.getElementById('timeLeft');
 const skinStatusDom = document.getElementById('skinStatus');
 const skinUnlockPanel = document.getElementById('skinUnlockPanel');
 const deathPanel = document.getElementById('deathPanel');
+
+//加载女仆爱丽丝立绘
+const maidArisImg = new Image();
+maidArisImg.crossOrigin = "anonymous";
+maidArisImg.src = "https://p3-flow-image-sign.byteimg.com/tos-cn-i-a9rns2rl98/30012000909041489244d42230031311~tplv-a9rns2rl98-image.image";
 
 const size = 20;
 const maxGrid = 20;
@@ -221,6 +244,11 @@ let skinUnlocked = false;
 let useMaidSkin = false;
 let playerColor = '#4CAF50';
 
+//清扫技能变量
+const SWEEP_COOLDOWN = 120;
+let sweepCd = 0;
+let sweepTimer = null;
+
 let shieldTime = 0;
 let luckyBuff = false;
 let speedBoosting = false;
@@ -237,6 +265,48 @@ let speedFactor = 0;
 let gameRunTime = 0;
 let speedTimer = null;
 
+function updateSweepUI(){
+    if(!skinUnlocked){
+        sweepBtn.disabled = true;
+        sweepBtn.innerText = "清扫\n未解锁";
+        return;
+    }
+    if(sweepCd > 0){
+        sweepBtn.disabled = true;
+        sweepBtn.innerText = `清扫\n${sweepCd}s`;
+    }else{
+        sweepBtn.disabled = false;
+        sweepBtn.innerText = "清扫\n就绪";
+    }
+}
+
+//清扫技能：清除AI蛇，保留长度，随机重生位置
+function doSweep(){
+    if(!skinUnlocked || sweepCd>0) return;
+    const aiLen = aiSnake.length;
+    //生成全新AI蛇，保持原有长度
+    const newHeadX = Math.floor(Math.random()*maxGrid);
+    const newHeadY = Math.floor(Math.random()*maxGrid);
+    aiSnake = [];
+    for(let i=0;i<aiLen;i++){
+        aiSnake.push({x:newHeadX,y:newHeadY+i});
+    }
+    //开启120秒冷却
+    sweepCd = SWEEP_COOLDOWN;
+    updateSweepUI();
+    if(sweepTimer) clearInterval(sweepTimer);
+    sweepTimer = setInterval(()=>{
+        sweepCd--;
+        updateSweepUI();
+        if(sweepCd <=0){
+            clearInterval(sweepTimer);
+        }
+    },1000);
+}
+
+sweepBtn.onclick = doSweep;
+sweepBtn.ontouchstart = e=>{e.preventDefault();doSweep();};
+
 function selectColor(color){
     playerColor = color;
     document.querySelectorAll('.color-item').forEach(item=>item.classList.remove('active'));
@@ -252,6 +322,7 @@ function toggleSkin(){
     skinStatusDom.innerText = skinUnlocked
         ? `皮肤状态：已解锁｜${useMaidSkin?"已启用女仆皮肤":"未启用"}`
         : "皮肤状态：未解锁｜未启用";
+    updateSweepUI();
 }
 
 function getDifficultyConfig(){
@@ -325,7 +396,7 @@ function headCollision(){
     if(cfg.noDeathHeadHit) return;
     let r = Math.random();
     if(r < 0.5){
-        clearInterval(timer);clearInterval(challengeTimer);clearInterval(speedTimer);
+        clearInterval(timer);clearInterval(challengeTimer);clearInterval(speedTimer);clearInterval(sweepTimer);
         deathPanel.style.display='block';
     }else{
         aiHitPlayerBody();
@@ -350,7 +421,7 @@ function collisionRandomEvent(){
     else if(r < safeRate+halfRate) playerSnake = playerSnake.slice(0, Math.max(1, Math.floor(playerSnake.length/2)));
     else if(r < safeRate+halfRate+headRate) playerSnake = [playerSnake[0]];
     else{
-        clearInterval(timer);clearInterval(challengeTimer);clearInterval(speedTimer);
+        clearInterval(timer);clearInterval(challengeTimer);clearInterval(speedTimer);clearInterval(sweepTimer);
         deathPanel.style.display='block';
     }
 }
@@ -422,7 +493,7 @@ function playerMove(){
         case 'left':head.x--;break;case 'right':head.x++;break;
     }
     if(head.x<0||head.x>=maxGrid||head.y<0||head.y>=maxGrid){
-        clearInterval(timer);clearInterval(challengeTimer);clearInterval(speedTimer);
+        clearInterval(timer);clearInterval(challengeTimer);clearInterval(speedTimer);clearInterval(sweepTimer);
         deathPanel.style.display='block';
         return;
     }
@@ -449,6 +520,7 @@ function playerMove(){
         if(isChallengeMode&&gamePoint>=50&&!skinUnlocked){
             skinUnlocked=true;skinStatusDom.innerText="皮肤状态：已解锁｜未启用";
             skinUnlockPanel.style.display='block';
+            updateSweepUI();
         }
     }else playerSnake.pop();
 }
@@ -471,25 +543,22 @@ function draw(){
     }else ctx.fillStyle='#000';
     ctx.fillRect(0,0,400,400);
 
-    // 绘制玩家蛇
+    //绘制玩家蛇：女仆皮肤逻辑
     for(let i=0;i<playerSnake.length;i++){
         const seg = playerSnake[i];
         const px = seg.x * size;
         const py = seg.y * size;
-        if(i===0 && useMaidSkin){
-            // 蛇头：缩小角色方块，身体从下方长出蓝色尾巴
-            ctx.fillStyle="#ffffff";
-            ctx.fillRect(px+3,py+2,14,12);
-            ctx.fillStyle="#00e5ff";
-            ctx.fillRect(px+5,py+14,10,4);
-        }else{
-            if(useMaidSkin){
-                // 蓝色渐变尾巴
-                let alpha = Math.max(0.25, 1 - i*0.045);
-                ctx.fillStyle = `rgba(0, 229, 255, ${alpha})`;
+        if(useMaidSkin && maidArisImg.complete){
+            //蛇头：完整女仆立绘，size大小
+            if(i===0){
+                ctx.drawImage(maidArisImg, px, py, size, size);
             }else{
-                ctx.fillStyle = playerColor;
+                //身体同样复用女仆贴图，大小和蛇头一致，不使用渐变方块
+                ctx.drawImage(maidArisImg, px, py, size, size);
             }
+        }else{
+            //普通原版方块皮肤
+            ctx.fillStyle = playerColor;
             ctx.fillRect(px,py,size-1,size-1);
         }
     }
@@ -524,17 +593,27 @@ thumb.addEventListener('touchstart',e=>{e.preventDefault();isDragging=true;})
 document.addEventListener('touchmove',e=>{
     if(!isDragging)return;e.preventDefault();
     const rect=joystick.getBoundingClientRect();
-    const cx=rect.left+rect.width/2,cy=rect.top+rect.height/2;
-    const tx=e.touches[0].clientX,ty=e.touches[0].clientY;
-    let dx=tx-cx,dy=ty-cy;
-    const dist=Math.hypot(dx,dy);
-    if(dist>joystickRadius-thumbRadius){
-        const s=(joystickRadius-thumbRadius)/dist;dx*=s;dy*=s;
+    const cx=rect.left+rect.width/2;
+    const cy=rect.top+rect.height/2;
+    const tx=e.touches[0].clientX;
+    const ty=e.touches[0].clientY;
+
+    let dx = tx - cx;
+    let dy = ty - cy;
+    const dist = Math.hypot(dx, dy);
+    if(dist > joystickRadius){
+        const scale = joystickRadius / dist;
+        dx *= scale;
+        dy *= scale;
     }
-    thumb.style.transform=`translate(calc(-50%+${dx}px),calc(-50%+${dy}px))`;
-    nextDir=Math.abs(dx)>Math.abs(dy)?(dx>0?'right':'left'):(dy>0?'down':'up');
+    //滑块跟随手指触摸位置
+    thumb.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+    nextDir = Math.abs(dx) > Math.abs(dy) ? (dx>0?'right':'left') : (dy>0?'down':'up');
 })
-document.addEventListener('touchend',()=>{isDragging=false;thumb.style.transform='translate(-50%,-50%)';})
+document.addEventListener('touchend',()=>{
+    isDragging=false;
+    thumb.style.transform='translate(-50%,-50%)';
+})
 
 speedBtn.addEventListener('touchstart',()=>{
     if(speedBoosting)return;speedBoosting=true;
@@ -562,7 +641,8 @@ function buySkin(){
         gamePoint-=30;skinUnlocked=true;useMaidSkin=true;
         pointDom.innerText=gamePoint;gamePointDom.innerText=gamePoint;
         skinStatusDom.innerText="皮肤状态：已解锁｜已启用女仆皮肤";
-        alert("购买成功，已自动启用女仆爱丽丝皮肤");
+        updateSweepUI();
+        alert("购买成功，已自动启用女仆爱丽丝皮肤，解锁专属技能【清扫】");
     }else alert("积分不足，需要30积分");
 }
 
@@ -572,7 +652,7 @@ function startChallengeCountdown(){
     challengeTimer=setInterval(()=>{
         challengeTime--;timeLeftDom.innerText=challengeTime;
         if(challengeTime<=0){
-            clearInterval(challengeTimer);clearInterval(timer);clearInterval(speedTimer);
+            clearInterval(challengeTimer);clearInterval(timer);clearInterval(speedTimer);clearInterval(sweepTimer);
             if(gamePoint<50)alert("挑战失败");gameOver();
         }
     },1000);
@@ -580,7 +660,6 @@ function startChallengeCountdown(){
 
 function gameLoop(){
     let cfg=getDifficultyConfig();
-    // 加速只作用玩家，AI速度不受speedBoosting影响
     let playerSpeed = cfg.speed*(1-speedFactor);
     if(speedBoosting) playerSpeed *= 0.85;
 
@@ -616,11 +695,12 @@ function resetGame(){
     playerSnake=[{x:10,y:10}];aiSnake=[{x:3,y:3}];
     dir='right';nextDir='right';aiDir='right';
     score=0;shieldTime=0;luckyBuff=false;speedBoosting=false;doublePoint=false;worldProps=[];
-    scoreDom.innerText=0;updatePropUI();
+    sweepCd=0;clearInterval(sweepTimer);
+    scoreDom.innerText=0;updatePropUI();updateSweepUI();
 }
 
 function gameOver(){
-    clearTimeout(timer);clearInterval(challengeTimer);clearInterval(speedTimer);
+    clearTimeout(timer);clearInterval(challengeTimer);clearInterval(speedTimer);clearInterval(sweepTimer);
     gameLayout.style.display='none';
     bottomControl.style.display='none';
     endMenu.style.display='block';
@@ -635,11 +715,13 @@ function restartGame(){
 
 function backToMenu(){
     deathPanel.style.display='none';
-    clearTimeout(timer);clearInterval(challengeTimer);clearInterval(speedTimer);
+    clearTimeout(timer);clearInterval(challengeTimer);clearInterval(speedTimer);clearInterval(sweepTimer);
     gameLayout.style.display='none';
     bottomControl.style.display='none';
     mainMenu.style.display='block';gameInfo.style.display='none';endMenu.style.display='none';
 }
+
+updateSweepUI();
 </script>
 </body>
 </html>
